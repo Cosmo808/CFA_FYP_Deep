@@ -1,0 +1,5 @@
+# ignore data file
+data/
+
+# ignore model file
+model/
