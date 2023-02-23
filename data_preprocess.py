@@ -25,11 +25,11 @@ test_index = np.sort(index[:int(len(index) * p)])
 
 train = catalog.loc[catalog['subject'].isin(train_index)]
 train_data = train.set_index(pd.Series(range(int((1 - p) * 10000))))
-torch.save(train_data, 'data/train_starmen')
+# torch.save(train_data, 'data/train_starmen')
 
 test = catalog.loc[catalog['subject'].isin(test_index)]
 test_data = test.set_index(pd.Series(range(int(p * 10000))))
-torch.save(test_data, 'data/test_starmen')
+# torch.save(test_data, 'data/test_starmen')
 
 
 def hist_norm(data, figure_num, bins=70):
@@ -139,4 +139,5 @@ def generate_XY():
 
 
 if __name__ == '__main__':
-    generate_XY()
+    # generate_XY()
+    plot_sample()

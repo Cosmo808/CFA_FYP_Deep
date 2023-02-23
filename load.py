@@ -54,4 +54,4 @@ if __name__ == '__main__':
     recon_img, z, zu, zv = ae.forward(test_image)
     recon = recon_img[0]
     test = test_image[0] - 1e-6
-    print(ae.loss(recon, test))
+    print(ae.train_loss[-1])
