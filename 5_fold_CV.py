@@ -87,7 +87,7 @@ def generate_XY(train_data):
 
 if __name__ == '__main__':
     # hyperparameter
-    epochs = 500
+    epochs = 300
     lr = 1e-3
     batch_size = 128
 
@@ -119,4 +119,6 @@ if __name__ == '__main__':
         optimizer_fn = optim.Adam
         optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
         autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
+        if not os.path.exists('model'):
+            os.mkdir('model')
         torch.save(autoencoder, 'model/{}_fold_starmen'.format(fold))

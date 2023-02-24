@@ -59,4 +59,6 @@ if __name__ == '__main__':
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
+    if not os.path.exists('model'):
+        os.mkdir('model')
     torch.save(autoencoder, 'model/starmen')
