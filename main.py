@@ -1,10 +1,12 @@
 import torch
 import torch.optim as optim
 from torch.utils import data
+from torch.autograd import Variable
 import logging
 import sys
 import os
 from dataset import Dataset_starmen
+from data_preprocess import Data_preprocess
 from model import AE_starmen
 
 
@@ -31,13 +33,14 @@ if __name__ == '__main__':
     logger.info(f"Device is {device}")
 
     # hyperparameter
-    epochs = 100
+    epochs = 200
     lr = 1e-3
     batch_size = 128
+    fold = 0
 
     # load data
-    train_data = torch.load('data/train_starmen')
-    test_data = torch.load('data/test_starmen')
+    data_generator = Data_preprocess()
+    train_data, test_data = data_generator.generate_train_test(fold)
 
     print(f"Loaded {len(train_data['path']) + len(test_data['path'])} scans")
 
@@ -54,6 +57,9 @@ if __name__ == '__main__':
 
     # training
     autoencoder = AE_starmen()
+    X, Y = data_generator.generate_XY(train_data)
+    X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
+    autoencoder.X, autoencoder.Y = X, Y
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam
@@ -61,4 +67,4 @@ if __name__ == '__main__':
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
     if not os.path.exists('model'):
         os.mkdir('model')
-    torch.save(autoencoder, 'model/starmen')
+    torch.save(autoencoder, 'model/{}_fold_starmen'.format(fold))

@@ -60,8 +60,7 @@ class AE_starmen(nn.Module):
         self.self_recon, self.cross_recon, self.align = [], [], []
         self.log_p_b = []
 
-        self.X = torch.load('data/X').to(device).float()
-        self.Y = torch.load('data/Y').to(device).float()
+        self.X, self.Y = None, None
 
         self.beta = torch.rand(size=[p, dim_z], device=device)
         self.b = torch.normal(mean=0, std=1, size=[q * I, dim_z], device=device)
@@ -195,7 +194,7 @@ class AE_starmen(nn.Module):
             self.plot_loss()
             end_time = time()
             logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} take {np.round(end_time - start_time, 3)} seconds\n")
+                f"Epoch loss (train/test): {epoch_loss:.5}/{test_loss:.5} take {np.round(end_time - start_time, 3)} seconds\n")
 
         print('Complete training')
         return
@@ -424,7 +423,7 @@ class AE_starmen(nn.Module):
             z = Z[:, i].cpu().detach().numpy()
             axes[i].hist(z, bins=70, density=True)
             axes[i].set_title('{}-th dim'.format(i + 1))
-            axes[i].set_xlabel(f"Min: {np.min(z):.3e}\nMean: {np.mean(z):.3e}\nMax: {np.max(z):.3e}")
+            axes[i].set_xlabel(f"Min: {np.min(z):.4}\nMean: {np.mean(z):.4}\nMax: {np.max(z):.4}")
             min_z.append(np.min(z))
             mean_z.append(np.mean(z))
             max_z.append(np.max(z))
@@ -441,7 +440,7 @@ class AE_starmen(nn.Module):
             zu = ZU[:, i].cpu().detach().numpy()
             axes[i].hist(zu, bins=70, density=True)
             axes[i].set_title('{}-th dim'.format(i + 1))
-            axes[i].set_xlabel(f"Min: {np.min(zu):.3e}\nMean: {np.mean(zu):.3e}\nMax: {np.max(zu):.3e}")
+            axes[i].set_xlabel(f"Min: {np.min(zu):.4}\nMean: {np.mean(zu):.4}\nMax: {np.max(zu):.4}")
             min_zu.append(np.min(zu))
             mean_zu.append(np.mean(zu))
             max_zu.append(np.max(zu))
@@ -458,7 +457,7 @@ class AE_starmen(nn.Module):
             zv = ZV[:, i].cpu().detach().numpy()
             axes[i].hist(zv, bins=70, density=True)
             axes[i].set_title('{}-th dim'.format(i + 1))
-            axes[i].set_xlabel(f"Min: {np.min(zv):.3e}\nMean: {np.mean(zv):.3e}\nMax: {np.max(zv):.3e}")
+            axes[i].set_xlabel(f"Min: {np.min(zv):.4}\nMean: {np.mean(zv):.4}\nMax: {np.max(zv):.4}")
             min_zv.append(np.min(zv))
             mean_zv.append(np.mean(zv))
             max_zv.append(np.max(zv))
@@ -581,7 +580,7 @@ class AE_starmen(nn.Module):
             self.log_p_b.append(log_pb)
         utv = torch.matmul(torch.transpose(self.U, 0, 1), self.V)
         utv_norm_2 = torch.pow(torch.norm(utv, p='fro'), 2).cpu().detach().numpy()
-        logger.info(f"log p(b) = {self.log_p_b[-1]:.3e}, |D| = {torch.det(self.D):.3e}, "
-                    f"tr(bt D^-1 b) = {torch.trace(bt_dinv_b):.3e}, mean(b) = {torch.mean(self.b).cpu().detach().numpy():.3e}")
+        logger.info(f"log p(b) = {self.log_p_b[-1]:.5}, |D| = {torch.det(self.D):.5}, "
+                    f"tr(bt D^-1 b) = {torch.trace(bt_dinv_b):.4}, mean(b) = {torch.mean(self.b).cpu().detach().numpy():.4}")
         logger.info(f"||U^T * V||^2 = {utv_norm_2:.6e}")
         logger.info(f"Update mixed effect parameters take {np.round(end_time - start_time, 3)} seconds")
