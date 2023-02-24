@@ -21,6 +21,7 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+fold = 0
 
 
 if __name__ == '__main__':
@@ -31,18 +32,17 @@ if __name__ == '__main__':
 
     # logger.info("DEBUGGING THE network.py FILE")
     logger.info(f"Device is {device}")
+    logger.info(f"Fold {fold}")
 
     # hyperparameter
     epochs = 200
     lr = 1e-3
     batch_size = 128
-    fold = 0
 
     # load data
     data_generator = Data_preprocess()
     train_data, test_data = data_generator.generate_train_test(fold)
-
-    print(f"Loaded {len(train_data['path']) + len(test_data['path'])} scans")
+    logger.info(f"Loaded {len(train_data['path']) + len(test_data['path'])} scans")
 
     train_data.requires_grad = False
     test_data.requires_grad = False

@@ -208,6 +208,7 @@ class beta_VAE(nn.Module):
         plt.savefig('visualization/beta_VAE_recon.png', bbox_inches='tight')
         plt.close()
 
+
 def main():
     """
     For debugging purposes only, once the architectures and training routines are efficient,
