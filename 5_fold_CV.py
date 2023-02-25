@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils import data
-from model import AE_starmen
+from model import AE_starmen, beta_VAE
 import logging
 import sys
 import os
@@ -25,7 +25,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
     # hyperparameter
-    epochs = 300
+    epochs = 500
     lr = 1e-3
     batch_size = 128
 
@@ -49,14 +49,14 @@ if __name__ == '__main__':
                                                    num_workers=0, drop_last=False, pin_memory=True)
 
         # training
-        autoencoder = AE_starmen()
-        X, Y = data_generator.generate_XY(train_data)
-        X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
-        autoencoder.X, autoencoder.Y = X, Y
+        autoencoder = beta_VAE()
+        # X, Y = data_generator.generate_XY(train_data)
+        # X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
+        # autoencoder.X, autoencoder.Y = X, Y
 
         optimizer_fn = optim.Adam
         optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
         autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
         if not os.path.exists('model'):
             os.mkdir('model')
-        torch.save(autoencoder, 'model/{}_fold_starmen'.format(fold))
+        torch.save(autoencoder, 'model/{}_fold_beta_VAE'.format(fold))
