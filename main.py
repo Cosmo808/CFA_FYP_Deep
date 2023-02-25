@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     # logger.info("DEBUGGING THE network.py FILE")
     logger.info(f"Device is {device}")
-    logger.info(f"Fold {fold}")
+    logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # hyperparameter
     epochs = 200
@@ -67,4 +67,4 @@ if __name__ == '__main__':
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
     if not os.path.exists('model'):
         os.mkdir('model')
-    torch.save(autoencoder, 'model/{}_fold_starmen'.format(fold))
+    torch.save(autoencoder, 'model/{}_starmen'.format(fold))

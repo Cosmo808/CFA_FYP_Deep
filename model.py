@@ -580,7 +580,7 @@ class AE_starmen(nn.Module):
             self.log_p_b.append(log_pb)
         utv = torch.matmul(torch.transpose(self.U, 0, 1), self.V)
         utv_norm_2 = torch.pow(torch.norm(utv, p='fro'), 2).cpu().detach().numpy()
-        logger.info(f"log p(b) = {self.log_p_b[-1]:.4}, |D| = {torch.det(self.D):.4}, "
-                    f"tr(bt D^-1 b) = {torch.trace(bt_dinv_b):.4}, mean(b) = {torch.mean(self.b).cpu().detach().numpy():.4}")
+        # logger.info(f"log p(b) = {self.log_p_b[-1]:.4}, |D| = {torch.det(self.D):.4}, "
+        #             f"tr(bt D^-1 b) = {torch.trace(bt_dinv_b):.4}, mean(b) = {torch.mean(self.b).cpu().detach().numpy():.4}")
         logger.info(f"||U^T * V||^2 = {utv_norm_2:.4}")
-        logger.info(f"Update mixed effect parameters take {np.round(end_time - start_time, 3)} seconds")
+        # logger.info(f"Update mixed effect parameters take {np.round(end_time - start_time, 3)} seconds")
