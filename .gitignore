@@ -1,5 +1,6 @@
-# ignore data file
+# ignore data and result file
 data/
+visualization/
 
 # ignore model file
 model/
