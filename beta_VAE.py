@@ -28,12 +28,12 @@ if __name__ == '__main__':
     this file will not be called as a script anymore.
     """
     # logger.info("DEBUGGING THE network.py FILE")
-    fold = 0
+    fold = 4
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # hyperparameter
-    epochs = 500
+    epochs = 300
     lr = 1e-3
     batch_size = 256
 
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
     if not os.path.exists('model'):
         os.mkdir('model')
-    torch.save(autoencoder, 'model/beta_VAE_starmen')
+    torch.save(autoencoder, 'model/{}_beta_VAE_starmen'.format(fold))

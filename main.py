@@ -7,7 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from model import AE_starmen
+from model import AE_starmen, beta_VAE
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'

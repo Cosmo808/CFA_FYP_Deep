@@ -37,7 +37,6 @@ class AE_starmen(nn.Module):
         nn.Module.__init__(self)
         self.gamma = 1
         self.lam = 1.0
-        self.epoch = 0  # For tensorboard to keep track of total number of epochs
         self.name = 'AE_starmen'
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
@@ -595,9 +594,6 @@ class beta_VAE(nn.Module):
         super(beta_VAE, self).__init__()
         nn.Module.__init__(self)
         self.beta = 5
-        self.gamma = 100
-        self.lr = 1e-4  # For epochs between MCMC steps
-        self.epoch = 0  # For tensorboard to keep track of total number of epochs
         self.name = 'beta_VAE'
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
@@ -615,6 +611,8 @@ class beta_VAE(nn.Module):
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn4 = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(32)
+
+        self.train_recon_loss, self.test_recon_loss = [], []
 
     def encoder(self, image):
         h1 = F.relu(self.bn1(self.conv1(image)))
@@ -681,6 +679,7 @@ class beta_VAE(nn.Module):
                 mu, logVar, reconstructed = self.forward(input_)
                 reconstruction_loss, kl_loss = criterion(mu, logVar, input_, reconstructed)
                 loss = reconstruction_loss + self.beta * kl_loss
+                self.train_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
 
                 loss.backward()
                 optimizer.step()
@@ -688,7 +687,7 @@ class beta_VAE(nn.Module):
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
-            test_loss, _ = self.evaluate(test)
+            test_loss = self.evaluate(test)
 
             if epoch_loss <= best_loss:
                 es = 0
@@ -703,7 +702,7 @@ class beta_VAE(nn.Module):
         print('Complete training')
         return
 
-    def evaluate(self, data, longitudinal=None, individual_RER=None, writer=None, train_losses=None):
+    def evaluate(self, data):
         """
         This is called on a subset of the dataset and returns the encoded latent variables as well as the evaluation
         loss for this subset.
@@ -712,44 +711,26 @@ class beta_VAE(nn.Module):
         self.training = False
         self.eval()
         criterion = self.loss
-        dataloader = torch.utils.data.DataLoader(data, batch_size=1, num_workers=0, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(data, batch_size=128, num_workers=0, shuffle=False, drop_last=False)
         tloss = 0.0
-        trecon_loss, tkl_loss, talignment_loss = 0.0, 0.0, 0.0
         nb_batches = 0
-        encoded_data = torch.empty([0, dim_z])
 
         with torch.no_grad():
             for data in dataloader:
                 image = torch.tensor([[np.load(path)] for path in data[0]]).float()
 
-                if longitudinal is not None:
-                    input_ = Variable(data[0]).to(device)
-                    mu, logVar, reconstructed = self.forward(input_)
-                    reconstruction_loss, kl_loss = criterion(mu, logVar, input_, reconstructed)
-                    alignment_loss = longitudinal(data, mu, reconstructed, individual_RER)
-                    loss = reconstruction_loss + self.beta * kl_loss + self.gamma * alignment_loss
-                    trecon_loss += reconstruction_loss
-                    tkl_loss += kl_loss
-                    talignment_loss += alignment_loss
-                else:
-                    input_ = Variable(image).to(device)
-                    mu, logVar, reconstructed = self.forward(input_)
-                    reconstruction_loss, kl_loss = criterion(mu, logVar, input_, reconstructed)
-                    loss = reconstruction_loss + self.beta * kl_loss
+                input_ = Variable(image).to(device)
+                mu, logVar, reconstructed = self.forward(input_)
+                reconstruction_loss, kl_loss = criterion(mu, logVar, input_, reconstructed)
+                loss = reconstruction_loss + self.beta * kl_loss
+                self.test_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
 
                 tloss += float(loss)
                 nb_batches += 1
-                encoded_data = torch.cat((encoded_data, mu.to('cpu')), 0)
-
-        if writer is not None:
-            writer.add_scalars('Loss/recon', {'test': trecon_loss / nb_batches, 'train': train_losses[0]}, self.epoch)
-            writer.add_scalars('Loss/kl', {'test': tkl_loss / nb_batches, 'train': train_losses[1]}, self.epoch)
-            writer.add_scalars('Loss/alignment', {'test': talignment_loss / nb_batches, 'train': train_losses[2]},
-                               self.epoch)
 
         loss = tloss / nb_batches
         self.training = True
-        return loss, encoded_data
+        return loss
 
     def plot_recon(self, data, n_subject=3):
         # Plot the reconstruction
