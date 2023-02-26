@@ -696,8 +696,8 @@ class beta_VAE(nn.Module):
                 es += 1
             end_time = time()
             self.plot_recon(test)
-            logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+            logger.info(f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{kl_loss.cpu().detach().numpy():.3e}")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
 
         print('Complete training')
         return

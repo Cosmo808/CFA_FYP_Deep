@@ -68,3 +68,4 @@ if __name__ == '__main__':
     if not os.path.exists('model'):
         os.mkdir('model')
     torch.save(autoencoder, 'model/{}_starmen'.format(fold))
+    logger.info(f"##### Fold {fold + 1}/5 finished #####\n")

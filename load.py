@@ -106,3 +106,4 @@ if __name__ == '__main__':
     train_std, test_std = np.std(train_loss), np.std(test_loss)
     print(train_mean / 64 / 64, train_std / 64 / 64)
     print(test_mean / 64 / 64, test_std / 64 / 64)
+

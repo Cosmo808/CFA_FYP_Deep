@@ -3,3 +3,4 @@ data/
 
 # ignore model file
 model/
+5-fold/
