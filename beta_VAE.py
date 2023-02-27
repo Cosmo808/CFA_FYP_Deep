@@ -33,7 +33,7 @@ if __name__ == '__main__':
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # hyperparameter
-    epochs = 300
+    epochs = 400
     lr = 1e-3
     batch_size = 256
 
@@ -64,3 +64,4 @@ if __name__ == '__main__':
         os.mkdir('model')
     torch.save(autoencoder, 'model/{}_beta_VAE_starmen'.format(fold))
     logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
+    logger.info(f"Model saved in model/{fold}_beta_VAE_starmen")

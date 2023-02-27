@@ -59,3 +59,4 @@ if __name__ == '__main__':
         autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
         torch.save(autoencoder, '5-fold/win/{}_fold_beta_VAE'.format(fold))
         logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
+        logger.info(f"Model saved in 5-fold/win/{fold}_fold_beta_VAE")

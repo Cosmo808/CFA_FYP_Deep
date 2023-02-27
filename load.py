@@ -46,64 +46,55 @@ if __name__ == '__main__':
     test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
                    test_data['timepoint'], test_data['first_age'])
 
-    # train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=True,
-    #                                            num_workers=0, drop_last=False, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(train, batch_size=1000, shuffle=False,
+    train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=True,
+                                               num_workers=0, drop_last=False, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(test, batch_size=512, shuffle=False,
                                               num_workers=0, drop_last=False, pin_memory=True)
 
     for data in test_loader:
         test_image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
         break
-    test_image = test_image[30:40]
+    test_image = test_image[0:10]
     recon_img, z, zu, zv = autoencoder.forward(test_image)
     global_tra = autoencoder.decoder(zu)
     indiv_hetero = autoencoder.decoder(zv)
 
-    fig, axes = plt.subplots(4, 10, figsize=(20, 8))
+    # fig, axes = plt.subplots(3, 10, figsize=(20, 6))
+    # plt.subplots_adjust(wspace=0, hspace=0)
+    #
+    # for i in range(10):
+    #     axes[0][i].matshow(255 * test_image[i][0].cpu().detach().numpy())
+    # for i in range(10):
+    #     axes[1][i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    # for i in range(10):
+    #     axes[2][i].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
+    # for axe in axes:
+    #     for ax in axe:
+    #         ax.set_xticks([])
+    #         ax.set_yticks([])
+
+    fig, axes = plt.subplots(3, 10, figsize=(20, 6))
     plt.subplots_adjust(wspace=0, hspace=0)
 
     for i in range(10):
         axes[0][i].matshow(255 * test_image[i][0].cpu().detach().numpy())
     for i in range(10):
-        axes[1][i].matshow(255 * recon_img[i][0].cpu().detach().numpy())
-    for i in range(10):
-        axes[2][i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
-    for i in range(10):
-        axes[3][i].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
-    for axe in axes:
-        for ax in axe:
-            ax.set_xticks([])
-            ax.set_yticks([])
+        grad_img = recon_img[i][0] - global_tra[i][0]
 
-    fig, axes = plt.subplots(4, 9, figsize=(18, 8))
-    plt.subplots_adjust(wspace=0, hspace=0)
-
-    for i in range(9):
-        axes[0][i].matshow((test_image[i + 1][0] - test_image[i][0]).cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+        # idx = torch.nonzero(torch.abs(grad_img) < 0.1)
+        # for id in idx:
+        #     grad_img[id[0]][id[1]] = 0.001
+        axes[1][i].matshow(grad_img.cpu().detach().numpy(), cmap=matplotlib.colormaps.get_cmap('bwr'),
                                          norm=matplotlib.colors.CenteredNorm())
     for i in range(9):
-        axes[1][i].matshow((recon_img[i + 1][0] - recon_img[i][0]).cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
-                                         norm=matplotlib.colors.CenteredNorm())
-    for i in range(9):
-        axes[2][i].matshow((global_tra[i + 1][0] - global_tra[i][0]).cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
-                                         norm=matplotlib.colors.CenteredNorm())
-    for i in range(9):
-        axes[3][i].matshow((indiv_hetero[i + 1][0] - indiv_hetero[i][0]).cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+        axes[2][i].matshow((indiv_hetero[i+1][0] - indiv_hetero[i][0]).cpu().detach().numpy(), cmap=matplotlib.colormaps.get_cmap('bwr'),
                                          norm=matplotlib.colors.CenteredNorm())
     for axe in axes:
         for ax in axe:
             ax.set_xticks([])
             ax.set_yticks([])
 
-    # plt.show()
+    plt.show()
 
-    train_loss, test_loss = [], []
-    for fold in range(5):
-        autoencoder = torch.load('5-fold/gpu4/{}_fold_starmen'.format(fold), map_location=device)
-        train_loss.append(autoencoder.train_loss[-1])
-        test_loss.append(autoencoder.test_loss[-1])
-    train_mean, test_mean = np.mean(train_loss), np.mean(test_loss)
-    train_std, test_std = np.std(train_loss), np.std(test_loss)
-    print(train_mean / 64 / 64, train_std / 64 / 64)
-    print(test_mean / 64 / 64, test_std / 64 / 64)
+
 
