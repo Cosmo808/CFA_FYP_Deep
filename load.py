@@ -48,13 +48,15 @@ if __name__ == '__main__':
 
     train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=True,
                                                num_workers=0, drop_last=False, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=512, shuffle=False,
+    test_loader = torch.utils.data.DataLoader(test, batch_size=1000, shuffle=False,
                                               num_workers=0, drop_last=False, pin_memory=True)
 
     for data in test_loader:
         test_image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
         break
-    test_image = test_image[0:10]
+    index0 = [61, 230, 653]
+    i = 653 // 10
+    test_image = test_image[i * 10:(i + 1) * 10]
     recon_img, z, zu, zv = autoencoder.forward(test_image)
     global_tra = autoencoder.decoder(zu)
     indiv_hetero = autoencoder.decoder(zv)
@@ -79,16 +81,9 @@ if __name__ == '__main__':
     for i in range(10):
         axes[0][i].matshow(255 * test_image[i][0].cpu().detach().numpy())
     for i in range(10):
-        grad_img = recon_img[i][0] - global_tra[i][0]
-
-        # idx = torch.nonzero(torch.abs(grad_img) < 0.1)
-        # for id in idx:
-        #     grad_img[id[0]][id[1]] = 0.001
-        axes[1][i].matshow(grad_img.cpu().detach().numpy(), cmap=matplotlib.colormaps.get_cmap('bwr'),
-                                         norm=matplotlib.colors.CenteredNorm())
-    for i in range(9):
-        axes[2][i].matshow((indiv_hetero[i+1][0] - indiv_hetero[i][0]).cpu().detach().numpy(), cmap=matplotlib.colormaps.get_cmap('bwr'),
-                                         norm=matplotlib.colors.CenteredNorm())
+        axes[1][i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    for i in range(10):
+        axes[2][i].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
     for axe in axes:
         for ax in axe:
             ax.set_xticks([])
@@ -96,5 +91,59 @@ if __name__ == '__main__':
 
     plt.show()
 
+    # for data in test_loader:
+    #     test_image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
+    #     baseline_age = data[2]
+    #     delta_age = data[3] - baseline_age
+    #
+    #     sample = []
+    #     for index, base_a in enumerate(baseline_age):
+    #         match_ba = [i for i, ba in enumerate(baseline_age) if 1e-5 < np.abs(ba - base_a) <= 0.05]
+    #         if match_ba:
+    #             sample.append([index, match_ba])
+    #     result = []
+    #     for index, match in sample:
+    #         match_age = [i for i in match if 1e-5 < np.abs(delta_age[i] - delta_age[index]) <= 0.05]
+    #         if match_age:
+    #             result.append([index] + match_age)
+    #     print(result)
+    #     break
+
+    # sim = []
+    # for match in result:
+    #     image = test_image[match]
+    #     recon_img, z, zu, zv = autoencoder.forward(image)
+    #     global_tra = autoencoder.decoder(zu)
+    #     indiv_hetero = autoencoder.decoder(zv)
+    #     mean_ = torch.mean(global_tra, dim=0, keepdim=True)
+    #     simi = autoencoder.loss(image, mean_[0])
+    #     print(simi)
+    #     sim.append(float(simi) / 64 / 64)
+    # print(np.mean(sim), np.std(sim))
 
 
+    # fig, axes = plt.subplots(3, 8, figsize=(16, 6))
+    # plt.subplots_adjust(wspace=0, hspace=0)
+    # for i in range(4):
+    #     axes[0][2 * i].matshow(255 * image0[i][0].cpu().detach().numpy())
+    # for i in range(4):
+    #     axes[1][2 * i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    # for i in range(4):
+    #     axes[2][2 * i].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
+    #
+    # recon_img, z, zu, zv = autoencoder.forward(image1)
+    # global_tra = autoencoder.decoder(zu)
+    # indiv_hetero = autoencoder.decoder(zv)
+    #
+    # for i in range(4):
+    #     axes[0][2 * i + 1].matshow(255 * image1[i][0].cpu().detach().numpy())
+    # for i in range(4):
+    #     axes[1][2 * i + 1].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    # for i in range(4):
+    #     axes[2][2 * i + 1].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
+    #
+    # for axe in axes:
+    #     for ax in axe:
+    #         ax.set_xticks([])
+    #         ax.set_yticks([])
+    # plt.show()
