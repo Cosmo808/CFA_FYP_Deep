@@ -539,16 +539,12 @@ class AE_starmen(nn.Module):
                 self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv
             )
 
-            # self.b = torch.matmul(torch.inverse(self.sigma2_2 * yty - self.sigma2_2 * torch.inverse(self.D)), yt_zv)
-            # self.beta = 1 / (self.sigma0_2 + self.sigma1_2) * torch.matmul(xtx_inv,
-            #             self.sigma1_2 * torch.matmul(xt, Z - torch.matmul(Y, self.b)) + self.sigma0_2 * xt_zu)
-
             # update variance parameter
             xbeta = torch.matmul(X, self.beta)
             yb = torch.matmul(Y, self.b)
             self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
             for i in range(1):
                 dbbd = torch.matmul(torch.inverse(self.D),
@@ -564,9 +560,6 @@ class AE_starmen(nn.Module):
                 uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
                 self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
                 self.V = torch.matmul(torch.inverse(ztz + self.sigma2_2 * self.lam * uut), zt_yb)
-            # self.V = torch.matmul(torch.inverse(ztz), zt_yb)
-            # vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
-            # self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
 
             xt_zu = torch.matmul(xt, torch.matmul(Z, self.U))
             yt_zv = torch.matmul(yt, torch.matmul(Z, self.V))
