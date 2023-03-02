@@ -66,7 +66,7 @@ class AE_starmen(nn.Module):
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
                                          device=device)).float()
         self.V = torch.eye(dim_z, device=device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1, 1, 1
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1, 0.5, 1
         self.D = torch.eye(q * I, device=device).float()
 
     def encoder(self, image):
@@ -544,7 +544,7 @@ class AE_starmen(nn.Module):
             yb = torch.matmul(Y, self.b)
             self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
             for i in range(1):
                 dbbd = torch.matmul(torch.inverse(self.D),

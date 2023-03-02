@@ -12,6 +12,7 @@ class Data_preprocess:
     def generate_init_data(self):
         self.catalog = self.catalog.loc[:, self.catalog.columns != 'id']
         tau_list = self.catalog.iloc[:, 0]
+        alpha_list = self.catalog.iloc[:, 1]
         age_list = self.catalog.iloc[:, 2]
 
         npy_path_list = self.catalog.iloc[:, 3]
@@ -19,7 +20,7 @@ class Data_preprocess:
         subject_list = pd.DataFrame(data=[int(i / 10) for i in range(10000)], columns=['subject'])
         timepoint_list = pd.DataFrame(data=[i % 10 for i in range(10000)], columns=['timepoint'])
 
-        self.catalog = pd.concat([npy_path_list, subject_list, tau_list, age_list, timepoint_list, first_age_list], axis=1)
+        self.catalog = pd.concat([npy_path_list, subject_list, tau_list, age_list, timepoint_list, first_age_list, alpha_list], axis=1)
         self.catalog = self.catalog.rename(columns={'t': 'age', 'tau': 'baseline_age'})
 
     def generate_train_test(self, fold):
@@ -35,6 +36,9 @@ class Data_preprocess:
         test_data = test.set_index(pd.Series(range(int(self.p * 10000))))
 
         return train_data, test_data
+
+    def generate_all(self):
+        return self.catalog
 
     def generate_XY(self, train_data):
         N = int(10000 * (1 - self.p))
@@ -65,29 +69,3 @@ class Data_preprocess:
         Y = torch.tensor(Y.values)
         return X, Y
 
-    # def plot_sample(self):
-    #     delta_age = self.catalog['age'] - self.catalog['baseline_age']
-    #
-    #     from model import AE_starmen
-    #     index1, index2 = AE_starmen.generate_sample(tau_list[:1000], delta_age[:1000])
-    #
-    #     n_col = 10
-    #     fig, axes = plt.subplots(2, n_col, figsize=(2 * n_col, 4))
-    #     plt.subplots_adjust(wspace=0, hspace=0)
-    #     for i in range(n_col):
-    #         select = np.random.randint(0, len(index1))
-    #         ind1 = index1[select]
-    #         ind2 = index2[select]
-    #         sub1 = self.catalog.iloc[ind1, :]
-    #         sub2 = self.catalog.iloc[ind2, :]
-    #         path1 = sub1[0]
-    #         path2 = sub2[0]
-    #         img_1 = np.load(path1)
-    #         img_2 = np.load(path2)
-    #         axes[0][i].matshow(255 * img_1)
-    #         axes[1][i].matshow(255 * img_2)
-    #     for axe in axes:
-    #         for ax in axe:
-    #             ax.set_xticks([])
-    #             ax.set_yticks([])
-    #     plt.show()
