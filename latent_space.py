@@ -24,7 +24,6 @@ logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
 if __name__ == '__main__':
     # load model
     autoencoder = torch.load('model/best_starmen', map_location=device)
@@ -63,56 +62,64 @@ if __name__ == '__main__':
 
     # get psi
     psi = dataset['alpha'] * (dataset['age'] - dataset['baseline_age'])
-    psi_array = np.linspace(min(psi), max(psi), num=11)
+    psi_array = np.linspace(min(psi), max(psi), num=9)
 
-    index = [np.nonzero(np.abs(np.array(psi) - p) < 0.1)[0][0] for p in psi_array]
+    index = [np.nonzero(np.abs(np.array(psi) - p) < 0.05)[0][0] for p in psi_array]
     print(psi_array)
-    print(index)
+    # print(index)
 
     # individual trajectory
-    subject = [i // 10 for i in index]
-    subject_img = []
-    for s in subject:
-        subject_img += list(np.arange(s * 10, (s + 1) * 10))
+    # subject = [i // 10 for i in index]
+    # subject_img = []
+    # for s in subject:
+    #     subject_img += list(np.arange(s * 10, (s + 1) * 10))
+    #
+    # path = dataset.iloc[subject_img, 0]
+    # image = torch.tensor([[np.load(p)] for p in path], device=device).float()
+    #
+    # fig, axes = plt.subplots(len(index), 10, figsize=(20, 2 * len(index)))
+    # plt.subplots_adjust(wspace=0, hspace=0)
+    # for i in range(len(index)):
+    #     for j in range(10):
+    #         axes[i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
+    # for axe in axes:
+    #     for ax in axe:
+    #         ax.set_xticks([])
+    #         ax.set_yticks([])
+    # plt.savefig('visualization/latent_space/individual_trajectory.png', bbox_inches='tight')
 
-    path = dataset.iloc[subject_img, 0]
+    # global trajectory
+    # zu = ZU[index]
+    # global_tra = autoencoder.decoder(zu)
+    #
+    # fig, axes = plt.subplots(1, len(index), figsize=(2 * len(index), 2))
+    # plt.subplots_adjust(wspace=0, hspace=0)
+    # for i in range(len(index)):
+    #     axes[i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    # for ax in axes:
+    #     ax.set_xticks([])
+    #     ax.set_yticks([])
+    # plt.savefig('visualization/latent_space/global_trajectory.png', bbox_inches='tight')
+
+    # individual heterogeneity
+    index = [np.nonzero(np.abs(np.array(psi) - 8.9996696) < 0.1)[0]]
+    index = index[0][:7]
+    print(index)
+
+    path = dataset.iloc[index, 0]
     image = torch.tensor([[np.load(p)] for p in path], device=device).float()
+    zv = ZV[index]
+    indiv_hetero = autoencoder.decoder(zv)
 
-    fig, axes = plt.subplots(len(index), 10, figsize=(20, 2 * len(index)))
+    fig, axes = plt.subplots(len(index), 2, figsize=(4, 2 * len(index)))
     plt.subplots_adjust(wspace=0, hspace=0)
     for i in range(len(index)):
-        for j in range(10):
-            axes[i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
+        axes[i][0].matshow(255 * image[i][0].cpu().detach().numpy())
+        axes[i][1].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
     for axe in axes:
         for ax in axe:
             ax.set_xticks([])
             ax.set_yticks([])
-    plt.savefig('visualization/latent_space/individual_trajectory.png', bbox_inches='tight')
-
-    # global trajectory
-    zu = ZU[index]
-    global_tra = autoencoder.decoder(zu)
-
-    fig, axes = plt.subplots(1, len(index), figsize=(2 * len(index), 2))
-    plt.subplots_adjust(wspace=0, hspace=0)
-    for i in range(len(index)):
-        axes[i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
-    for ax in axes:
-        ax.set_xticks([])
-        ax.set_yticks([])
-    plt.savefig('visualization/latent_space/global_trajectory.png', bbox_inches='tight')
-
-    # individual heterogeneity
-    zv = ZV[index]
-    indiv_hetero = autoencoder.decoder(zv)
-
-    fig, axes = plt.subplots(1, len(index), figsize=(2 * len(index), 2))
-    plt.subplots_adjust(wspace=0, hspace=0)
-    for i in range(len(index)):
-        axes[i].matshow(255 * indiv_hetero[i][0].cpu().detach().numpy())
-    for ax in axes:
-        ax.set_xticks([])
-        ax.set_yticks([])
     plt.savefig('visualization/latent_space/indiv_heterogeneity.png', bbox_inches='tight')
 
     plt.close()

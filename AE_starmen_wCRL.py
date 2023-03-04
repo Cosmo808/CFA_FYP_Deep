@@ -1,12 +1,14 @@
 import torch
 import torch.optim as optim
 from torch.utils import data
-from model import beta_VAE
-from dataset import Dataset_starmen
-from data_preprocess import Data_preprocess
+from torch.autograd import Variable
 import logging
 import sys
 import os
+from dataset import Dataset_starmen
+from data_preprocess import Data_preprocess
+from model import AE_starmen_wCRL
+
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -19,22 +21,23 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+fold = 0
 
 
 if __name__ == '__main__':
     """
-    For debugging purposes only, once the architectures and training routines are efficient,
-    this file will not be called as a script anymore.
-    """
+        For debugging purposes only, once the architectures and training routines are efficient,
+        this file will not be called as a script anymore.
+        """
+
     # logger.info("DEBUGGING THE network.py FILE")
-    fold = 4
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # hyperparameter
     epochs = 400
     lr = 1e-3
-    batch_size = 256
+    batch_size = 128
 
     # load data
     data_generator = Data_preprocess()
@@ -53,7 +56,10 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = beta_VAE()
+    autoencoder = AE_starmen_wCRL()
+    X, Y = data_generator.generate_XY(train_data)
+    X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
+    autoencoder.X, autoencoder.Y = X, Y
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam
@@ -61,6 +67,6 @@ if __name__ == '__main__':
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
     if not os.path.exists('model'):
         os.mkdir('model')
-    torch.save(autoencoder, 'model/{}_beta_VAE_starmen'.format(fold))
+    torch.save(autoencoder, 'model/{}_starmen_wCRL'.format(fold))
     logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
-    logger.info(f"Model saved in model/{fold}_beta_VAE_starmen")
+    logger.info(f"Model saved in model/{fold}_starmen_wCRL")
