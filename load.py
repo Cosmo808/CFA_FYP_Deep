@@ -1,6 +1,5 @@
 import torch
 from torch.utils import data
-import torch.nn.functional as F
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
 from torch.autograd import Variable
