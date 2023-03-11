@@ -61,21 +61,21 @@ if __name__ == '__main__':
                 ZU = torch.cat((ZU, zu), 0)
                 ZV = torch.cat((ZV, zv), 0)
 
-    # U, S, V = torch.pca_lowrank(ZU)
-    # PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
+    U, S, V = torch.pca_lowrank(ZU)
+    PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
 
     # get psi
     psi = dataset['alpha'] * (dataset['age'] - dataset['baseline_age'])
 
     # plot same raising stage
-    index = []
-    for idx, p in enumerate(psi[:]):
-        match = [i for i, p_ in enumerate(psi[:]) if 1e-5 < np.abs(p_ - p) <= 0.05]
-        if len(match) >= 3:
-            index.append([idx] + match)
-
-    idx = index[1]
-    print(idx)
+    # index = []
+    # for idx, p in enumerate(psi[:]):
+    #     match = [i for i, p_ in enumerate(psi[:]) if 1e-5 < np.abs(p_ - p) <= 0.05]
+    #     if len(match) >= 3:
+    #         index.append([idx] + match)
+    #
+    # idx = index[1]
+    # print(idx)
 
     # fig, axes = plt.subplots(3, len(idx), figsize=(2 * len(idx), 6))
     # plt.subplots_adjust(wspace=0, hspace=0)
@@ -118,25 +118,21 @@ if __name__ == '__main__':
     #         ax.set_yticks([])
 
     # calculate mse between global trajectory
-    sim = []
-    for idx in index:
-        image = [np.load(path) for path in dataset.iloc[idx, 0]]
-        recon_glo = autoencoder.decoder(ZU[idx])
-        recon_indiv = autoencoder.decoder(ZV[idx])
-        mean_ = torch.mean(recon_glo, dim=0, keepdim=True)
-        simi = autoencoder.loss(recon_glo, mean_[0])
-        sim.append(float(simi) / 64 / 64)
-    print(np.mean(sim), np.std(sim))
+    # sim = []
+    # for idx in index:
+    #     image = [np.load(path) for path in dataset.iloc[idx, 0]]
+    #     recon_glo = autoencoder.decoder(ZU[idx])
+    #     recon_indiv = autoencoder.decoder(ZV[idx])
+    #     mean_ = torch.mean(recon_glo, dim=0, keepdim=True)
+    #     simi = autoencoder.loss(recon_glo, mean_[0])
+    #     sim.append(float(simi) / 64 / 64)
+    # print(np.mean(sim), np.std(sim))
 
     # Y = psi
     # X = sm.add_constant(PCA_ZU)
     # linear_model = sm.OLS(Y, X)
     # results = linear_model.fit()
     # print(results.summary())
-    # print(stats.pearsonr(PCA_ZU, psi))
-    # print(stats.spearmanr(PCA_ZU, psi))
-    # for x, y in zip(PCA_ZU, psi):
-    #     if np.random.rand() < 0.1:
-    #         plt.scatter(x, y)
+    print(stats.pearsonr(PCA_ZU, psi))
+    print(stats.spearmanr(PCA_ZU, psi))
 
-    plt.show()

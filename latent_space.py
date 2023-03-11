@@ -64,29 +64,31 @@ if __name__ == '__main__':
     psi = dataset['alpha'] * (dataset['age'] - dataset['baseline_age'])
     psi_array = np.linspace(min(psi), max(psi), num=9)
 
-    index = [np.nonzero(np.abs(np.array(psi) - p) < 0.05)[0][0] for p in psi_array]
+    index = [np.nonzero(np.abs(np.array(psi) - p) < 0.05)[0][:2] for p in psi_array]
+    print(index)
+    index = [j for i in index for j in i]
     print(psi_array)
-    # print(index)
+    print(index)
 
     # individual trajectory
-    # subject = [i // 10 for i in index]
-    # subject_img = []
-    # for s in subject:
-    #     subject_img += list(np.arange(s * 10, (s + 1) * 10))
-    #
-    # path = dataset.iloc[subject_img, 0]
-    # image = torch.tensor([[np.load(p)] for p in path], device=device).float()
-    #
-    # fig, axes = plt.subplots(len(index), 10, figsize=(20, 2 * len(index)))
-    # plt.subplots_adjust(wspace=0, hspace=0)
-    # for i in range(len(index)):
-    #     for j in range(10):
-    #         axes[i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
-    # for axe in axes:
-    #     for ax in axe:
-    #         ax.set_xticks([])
-    #         ax.set_yticks([])
-    # plt.savefig('visualization/latent_space/individual_trajectory.png', bbox_inches='tight')
+    subject = [i // 10 for i in index]
+    subject_img = []
+    for s in subject:
+        subject_img += list(np.arange(s * 10, (s + 1) * 10))
+
+    path = dataset.iloc[subject_img, 0]
+    image = torch.tensor([[np.load(p)] for p in path], device=device).float()
+
+    fig, axes = plt.subplots(len(index), 10, figsize=(20, 2 * len(index)))
+    plt.subplots_adjust(wspace=0, hspace=0)
+    for i in range(len(index)):
+        for j in range(10):
+            axes[i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
+    for axe in axes:
+        for ax in axe:
+            ax.set_xticks([])
+            ax.set_yticks([])
+    plt.savefig('visualization/latent_space/individual_trajectory.png', bbox_inches='tight')
 
     # global trajectory
     # zu = ZU[index]
@@ -102,8 +104,8 @@ if __name__ == '__main__':
     # plt.savefig('visualization/latent_space/global_trajectory.png', bbox_inches='tight')
 
     # individual heterogeneity
-    index = [np.nonzero(np.abs(np.array(psi) - 8.9996696) < 0.1)[0]]
-    index = index[0][:7]
+    index = [np.nonzero(np.abs(np.array(psi) - -3.7439508) < 0.1)[0]]
+    index = index[0][:6]
     print(index)
 
     path = dataset.iloc[index, 0]

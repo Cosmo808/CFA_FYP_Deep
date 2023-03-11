@@ -6,6 +6,7 @@ from data_preprocess import Data_preprocess
 from torch.autograd import Variable
 import matplotlib
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 import numpy as np
 import logging
 import sys
@@ -109,6 +110,8 @@ if __name__ == '__main__':
     # print('test bvae: ', np.mean(test_recon_bvae), np.std(test_recon_bvae))
 
     orthogonality = []
+    pearsonr = []
+    spearmanr = []
     for fold in range(5):
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
@@ -118,7 +121,7 @@ if __name__ == '__main__':
         autoencoder.eval()
 
         # load train and test data
-        train_data, test_data = data_generator.generate_train_test(0)  # fold 0
+        train_data, test_data = data_generator.generate_train_test(fold)
         train_data.requires_grad = False
         test_data.requires_grad = False
 
@@ -135,7 +138,23 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             Z, ZU, ZV = None, None, None
-            for data in train_loader:
+            # for data in train_loader:
+            #     image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
+            #
+            #     # self-reconstruction loss
+            #     input_ = Variable(image).to(device)
+            #     reconstructed, z, zu, zv = autoencoder.forward(input_)
+            #     self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+            #
+            #     # store Z, ZU, ZV
+            #     if Z is None:
+            #         Z, ZU, ZV = z, zu, zv
+            #     else:
+            #         Z = torch.cat((Z, z), 0)
+            #         ZU = torch.cat((ZU, zu), 0)
+            #         ZV = torch.cat((ZV, zv), 0)
+
+            for data in test_loader:
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
 
                 # self-reconstruction loss
@@ -151,19 +170,6 @@ if __name__ == '__main__':
                     ZU = torch.cat((ZU, zu), 0)
                     ZV = torch.cat((ZV, zv), 0)
 
-            for data in test_loader:
-                image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-
-                # self-reconstruction loss
-                input_ = Variable(image).to(device)
-                reconstructed, z, zu, zv = autoencoder.forward(input_)
-                self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-
-                # store Z, ZU, ZV
-                Z = torch.cat((Z, z), 0)
-                ZU = torch.cat((ZU, zu), 0)
-                ZV = torch.cat((ZV, zv), 0)
-
         # min_, mean_, max_ = autoencoder.plot_z_distribution(Z, ZU, ZV)
         # autoencoder.plot_simu_repre(min_, mean_, max_)
         # autoencoder.plot_grad_simu_repre(min_, mean_, max_)
@@ -173,4 +179,13 @@ if __name__ == '__main__':
         ortho = torch.det(ortho)
         orthogonality.append(float(ortho))
 
+        U, S, V = torch.pca_lowrank(ZU)
+        PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
+        # get psi
+        psi = test_data['alpha'] * (test_data['age'] - test_data['baseline_age'])
+        pearsonr.append(stats.pearsonr(PCA_ZU, psi))
+        spearmanr.append(stats.spearmanr(PCA_ZU, psi))
+
     print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
+    print('pearsonr: ', np.mean(pearsonr), np.std(pearsonr))
+    print('spearmanr: ', np.mean(spearmanr), np.std(spearmanr))
