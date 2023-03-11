@@ -183,8 +183,8 @@ if __name__ == '__main__':
         PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
         # get psi
         psi = test_data['alpha'] * (test_data['age'] - test_data['baseline_age'])
-        pearsonr.append(stats.pearsonr(PCA_ZU, psi))
-        spearmanr.append(stats.spearmanr(PCA_ZU, psi))
+        pearsonr.append(stats.pearsonr(PCA_ZU, psi)[0])
+        spearmanr.append(stats.spearmanr(PCA_ZU, psi)[0])
 
     print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
     print('pearsonr: ', np.mean(pearsonr), np.std(pearsonr))
