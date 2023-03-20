@@ -62,6 +62,9 @@ if __name__ == '__main__':
     autoencoder.X, autoencoder.Y = X, Y
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
+    # without UV=0
+    autoencoder.lam = 0.0
+
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
