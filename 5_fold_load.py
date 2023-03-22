@@ -1,12 +1,8 @@
 import torch
 from torch.utils import data
-import torch.nn.functional as F
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from torch.autograd import Variable
-import matplotlib
 import matplotlib.pyplot as plt
-import scipy.stats as stats
 import numpy as np
 import logging
 import sys

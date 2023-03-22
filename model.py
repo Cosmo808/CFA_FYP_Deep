@@ -297,12 +297,12 @@ class AE_starmen(nn.Module):
         fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                # encoded = torch.matmul(simulated_latent, self.U)
-                simulated_img = self.decoder(simulated_latent)
+                encoded = torch.matmul(simulated_latent, self.U)
+                simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
             for ax in axe:
@@ -316,12 +316,12 @@ class AE_starmen(nn.Module):
         fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[2][i], max_[2][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                # encoded = torch.matmul(simulated_latent, self.V)
-                simulated_img = self.decoder(simulated_latent)
+                encoded = torch.matmul(simulated_latent, self.V)
+                simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
             for ax in axe:
@@ -364,12 +364,12 @@ class AE_starmen(nn.Module):
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                # encoded = torch.matmul(simulated_latent, self.U)
-                simulated_img = self.decoder(simulated_latent)
+                encoded = torch.matmul(simulated_latent, self.U)
+                simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
                     continue
@@ -390,12 +390,12 @@ class AE_starmen(nn.Module):
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[2][i], max_[2][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                # encoded = torch.matmul(simulated_latent, self.V)
-                simulated_img = self.decoder(simulated_latent)
+                encoded = torch.matmul(simulated_latent, self.V)
+                simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
                     continue
@@ -1437,7 +1437,7 @@ class ML_VAE(nn.Module):
         for i in range(dim_z):
             arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
                 encoded = torch.matmul(simulated_latent, self.U)
                 simulated_img = self.decoder(encoded)
@@ -1454,7 +1454,7 @@ class ML_VAE(nn.Module):
         fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
                 simulated_latent[0][i] = j
@@ -1476,9 +1476,9 @@ class ML_VAE(nn.Module):
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
                 encoded = torch.matmul(simulated_latent, self.U)
                 simulated_img = self.decoder(encoded)
@@ -1502,9 +1502,9 @@ class ML_VAE(nn.Module):
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
         for i in range(dim_z):
-            arange = np.linspace(min_[2][i], max_[2][i], num=11)
+            arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
                 encoded = torch.matmul(simulated_latent, self.V)
                 simulated_img = self.decoder(encoded)

@@ -7,7 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from model import AE_starmen
+from model import ML_VAE
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = AE_starmen()
+    autoencoder = ML_VAE()
     X, Y = data_generator.generate_XY(train_data)
     X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
     autoencoder.X, autoencoder.Y = X, Y
@@ -64,15 +64,9 @@ if __name__ == '__main__':
 
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
-
-    autoencoder = torch.load('model/best_starmen', map_location=device)
-    autoencoder.eval()
-    autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=1)
-    exit()
-
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
     if not os.path.exists('model'):
         os.mkdir('model')
-    torch.save(autoencoder, 'model/{}_starmen'.format(fold))
+    torch.save(autoencoder, 'model/{}_ML_VAE_starmen'.format(fold))
     logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
-    logger.info(f"Model saved in model/{fold}_starmen")
+    logger.info(f"Model saved in model/{fold}_ML_VAE_starmen")
