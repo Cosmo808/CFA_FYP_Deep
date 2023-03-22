@@ -1238,3 +1238,330 @@ class beta_VAE(nn.Module):
                 ax.set_yticks([])
         plt.savefig('visualization/beta_VAE_recon.png', bbox_inches='tight')
         plt.close()
+
+
+class ML_VAE(nn.Module):
+    def __init__(self):
+        super(ML_VAE, self).__init__()
+        nn.Module.__init__(self)
+        self.beta = 5
+        self.name = 'ML_VAE'
+
+        self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
+        self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
+        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)  # 32 x 8 x 8
+        self.bn1 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.bn3 = nn.BatchNorm2d(32)
+        self.fc10 = nn.Linear(2048, dim_z)
+        self.fc11 = nn.Linear(2048, dim_z)
+        self.fc12 = nn.Linear(2048, dim_z)
+        self.fc13 = nn.Linear(2048, dim_z)
+
+        self.fc3 = nn.Linear(dim_z * 2, 512)
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
+        self.bn4 = nn.BatchNorm2d(64)
+        self.bn5 = nn.BatchNorm2d(32)
+
+        self.train_recon_loss, self.test_recon_loss = [], []
+
+    def encoder(self, image):
+        h1 = F.relu(self.bn1(self.conv1(image)))
+        h2 = F.relu(self.bn2(self.conv2(h1)))
+        h3 = F.relu(self.bn3(self.conv3(h2)))
+
+        # style
+        style_mu = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
+        style_logVar = self.fc11(h3.flatten(start_dim=1))
+
+        # class
+        class_mu = torch.tanh(self.fc12(h3.flatten(start_dim=1)))
+        class_logVar = self.fc13(h3.flatten(start_dim=1))
+        return style_mu, style_logVar, class_mu, class_logVar
+
+    def decoder(self, encoded):
+        h6 = F.relu(self.fc3(encoded)).reshape([encoded.size()[0], 8, 8, 8])
+        h7 = F.relu(self.bn4(self.upconv1(h6)))
+        h8 = F.relu(self.bn5(self.upconv2(h7)))
+        reconstructed = F.relu(self.upconv3(h8))
+        return reconstructed
+
+    def reparametrize(self, mu, logVar):
+        # Reparameterization takes in the input mu and logVar and sample the mu + std * eps
+        std = torch.exp(logVar / 2).to(device)
+        eps = torch.normal(mean=torch.tensor([0 for i in range(std.shape[1])]).float(), std=1).to(device)
+        return mu + eps * std
+
+    def forward(self, image):
+        style_mu, style_logVar, class_mu, class_logVar = self.encoder(image)
+        if self.training:
+            style_encoded = self.reparametrize(style_mu, style_logVar)
+            class_encoded = self.reparametrize(class_mu, class_logVar)
+        else:
+            style_encoded = style_mu
+            class_encoded = class_mu
+        return style_mu, style_logVar, class_mu, class_logVar, style_encoded, class_encoded
+
+    def loss(self, mu, logVar, reconstructed, input_):
+        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
+        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        return recon_error, kl_divergence
+
+    def train_(self, data_loader, test, optimizer, num_epochs=20, criterion=None):
+
+        self.to(device)
+        if criterion is None:
+            criterion = self.loss
+        best_loss = 1e10
+        es = 0
+
+        ZU, ZV = None, None
+        for epoch in range(num_epochs):
+
+            start_time = time()
+            if es == 100:
+                break
+
+            logger.info('Epoch {}/{}'.format(epoch + 1, num_epochs))
+
+            tloss = 0.0
+            nb_batches = 0
+
+            for data in data_loader:
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
+                optimizer.zero_grad()
+
+                input_ = Variable(image).to(device)
+                style_mu, style_logVar, class_mu, class_logVar, style_encoded, class_encoded = self.forward(input_)
+                encoded = torch.cat((style_encoded, class_encoded), dim=1)
+                reconstructed = self.decoder(encoded)
+                reconstruction_loss, style_kl_loss = criterion(style_mu, style_logVar, input_, reconstructed)
+                reconstruction_loss, class_kl_loss = criterion(class_mu, class_logVar, input_, reconstructed)
+                loss = reconstruction_loss + self.beta * (style_kl_loss + class_kl_loss)
+                self.train_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
+
+                # store ZU, ZV
+                if ZU is None:
+                    ZU, ZV = class_encoded, style_encoded
+                else:
+                    ZU = torch.cat((ZU, class_encoded), 0)
+                    ZV = torch.cat((ZV, style_encoded), 0)
+
+                loss.backward()
+                optimizer.step()
+                tloss += float(loss)
+                nb_batches += 1
+
+            epoch_loss = tloss / nb_batches
+            test_loss = self.evaluate(test)
+
+            if epoch_loss <= best_loss:
+                es = 0
+                best_loss = epoch_loss
+            else:
+                es += 1
+            end_time = time()
+
+            # plot the results
+            self.plot_recon(test)
+            min_, mean_, max_ = self.plot_z_distribution(ZU, ZV)
+            self.plot_simu_repre(min_, mean_, max_)
+            self.plot_grad_simu_repre(min_, mean_, max_)
+
+            logger.info(f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{(style_kl_loss + class_kl_loss).cpu().detach().numpy():.3e}")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+
+        print('Complete training')
+        return
+
+    def evaluate(self, data):
+        """
+        This is called on a subset of the dataset and returns the encoded latent variables as well as the evaluation
+        loss for this subset.
+        """
+        self.to(device)
+        self.training = False
+        self.eval()
+        criterion = self.loss
+        dataloader = torch.utils.data.DataLoader(data, batch_size=128, num_workers=0, shuffle=False, drop_last=False)
+        tloss = 0.0
+        nb_batches = 0
+
+        with torch.no_grad():
+            for data in dataloader:
+                image = torch.tensor([[np.load(path)] for path in data[0]]).float()
+
+                input_ = Variable(image).to(device)
+                style_mu, style_logVar, class_mu, class_logVar, style_encoded, class_encoded = self.forward(input_)
+                encoded = torch.cat((style_encoded, class_encoded), dim=1)
+                reconstructed = self.decoder(encoded)
+                reconstruction_loss, style_kl_loss = criterion(style_mu, style_logVar, input_, reconstructed)
+                reconstruction_loss, class_kl_loss = criterion(class_mu, class_logVar, input_, reconstructed)
+                loss = reconstruction_loss + self.beta * (style_kl_loss + class_kl_loss)
+                self.test_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
+
+                tloss += float(loss)
+                nb_batches += 1
+
+        loss = tloss / nb_batches
+        self.training = True
+        return loss
+
+    def plot_recon(self, data, n_subject=3):
+        # Plot the reconstruction
+        fig, axes = plt.subplots(2 * n_subject, 10, figsize=(20, 4 * n_subject))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for j in range(n_subject):
+            for i in range(10):
+                test_image = torch.tensor(np.load(data[j * 10 + i][0])).resize(1, 1, 64, 64).float()
+                test_image = Variable(test_image).to(device)
+                _, _, _, _, style_encoded, class_encoded = self.forward(test_image)
+                encoded = torch.cat((style_encoded, class_encoded), dim=1)
+                out = self.decoder(encoded)
+                axes[2 * j][i].matshow(255 * test_image[0][0].cpu().detach().numpy())
+                axes[2 * j + 1][i].matshow(255 * out[0][0].cpu().detach().numpy())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+        plt.savefig('visualization/reconstruction.png', bbox_inches='tight')
+        plt.close()
+
+    def plot_simu_repre(self, min_, mean_, max_):
+        # Plot simulated data in all directions of the latent space
+        # ZU
+        fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(dim_z):
+            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            for idx, j in enumerate(arange):
+                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent[0][i] = j
+                encoded = torch.matmul(simulated_latent, self.U)
+                simulated_img = self.decoder(encoded)
+                axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+        plt.savefig('visualization/simulation_latent_ZU.png', bbox_inches='tight')
+        plt.close()
+
+        # ZV
+        fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(dim_z):
+            arange = np.linspace(min_[2][i], max_[2][i], num=11)
+            for idx, j in enumerate(arange):
+                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent[0][i] = j
+                encoded = torch.matmul(simulated_latent, self.V)
+                simulated_img = self.decoder(encoded)
+                axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+        plt.savefig('visualization/simulation_latent_ZV.png', bbox_inches='tight')
+        plt.close()
+        self.training = True
+
+    def plot_grad_simu_repre(self, min_, mean_, max_):
+        # Plot the gradient map of simulated data in all directions of the latent space
+        # ZU
+        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(dim_z):
+            arange = np.linspace(min_[1][i], max_[1][i], num=11)
+            for idx, j in enumerate(arange):
+                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
+                simulated_latent[0][i] = j
+                encoded = torch.matmul(simulated_latent, self.U)
+                simulated_img = self.decoder(encoded)
+                if idx == 0:
+                    template = simulated_img
+                    continue
+                grad_img = simulated_img - template
+                template = simulated_img
+                axes[i][idx - 1].matshow(grad_img[0][0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+                                         norm=matplotlib.colors.CenteredNorm())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+        fig.colorbar(matplotlib.cm.ScalarMappable(cmap=matplotlib.cm.get_cmap('bwr'), norm=matplotlib.colors.CenteredNorm()),
+                     cax=fig.add_axes([0.92, 0.15, 0.01, 0.7]))
+        plt.savefig('visualization/gradient_simulation_latent_ZU.png', bbox_inches='tight')
+        plt.close()
+
+        # ZV
+        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(dim_z):
+            arange = np.linspace(min_[2][i], max_[2][i], num=11)
+            for idx, j in enumerate(arange):
+                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent[0][i] = j
+                encoded = torch.matmul(simulated_latent, self.V)
+                simulated_img = self.decoder(encoded)
+                if idx == 0:
+                    template = simulated_img
+                    continue
+                grad_img = simulated_img - template
+                template = simulated_img
+                axes[i][idx - 1].matshow(grad_img[0][0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+                                         norm=matplotlib.colors.CenteredNorm())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+        fig.colorbar(matplotlib.cm.ScalarMappable(cmap=matplotlib.cm.get_cmap('bwr'), norm=matplotlib.colors.CenteredNorm()),
+                     cax=fig.add_axes([0.92, 0.15, 0.01, 0.7]))
+        plt.savefig('visualization/gradient_simulation_latent_ZV.png', bbox_inches='tight')
+        plt.close()
+        self.training = True
+
+    @staticmethod
+    def plot_z_distribution(ZU, ZV):
+        min_zu, mean_zu, max_zu = [], [], []
+        fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
+        plt.subplots_adjust(wspace=0.1, hspace=0)
+        for i in range(dim_z):
+            zu = ZU[:, i].cpu().detach().numpy()
+            axes[i].hist(zu, bins=70, density=True)
+            axes[i].set_title('{}-th dim'.format(i + 1))
+            axes[i].set_xlabel(f"Min: {np.min(zu):.4}\nMean: {np.mean(zu):.4}\nMax: {np.max(zu):.4}")
+            min_zu.append(np.min(zu))
+            mean_zu.append(np.mean(zu))
+            max_zu.append(np.max(zu))
+        for axe in axes:
+            axe.set_yticks([])
+            axe.set_xlim(left=-1, right=1)
+        plt.savefig('visualization/ZU_distribution.png', bbox_inches='tight')
+        plt.close()
+
+        min_zv, mean_zv, max_zv = [], [], []
+        fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
+        plt.subplots_adjust(wspace=0.1, hspace=0)
+        for i in range(dim_z):
+            zv = ZV[:, i].cpu().detach().numpy()
+            axes[i].hist(zv, bins=70, density=True)
+            axes[i].set_title('{}-th dim'.format(i + 1))
+            axes[i].set_xlabel(f"Min: {np.min(zv):.4}\nMean: {np.mean(zv):.4}\nMax: {np.max(zv):.4}")
+            min_zv.append(np.min(zv))
+            mean_zv.append(np.mean(zv))
+            max_zv.append(np.max(zv))
+        for axe in axes:
+            axe.set_yticks([])
+            axe.set_xlim(left=-1, right=1)
+        plt.savefig('visualization/ZV_distribution.png', bbox_inches='tight')
+        plt.close()
+
+        min_ = [min_zu, min_zv]
+        mean_ = [mean_zu, mean_zv]
+        max_ = [max_zu, max_zv]
+        return min_, mean_, max_
