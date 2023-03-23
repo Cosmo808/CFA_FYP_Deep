@@ -35,7 +35,7 @@ if __name__ == '__main__':
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # hyperparameter
-    epochs = 200
+    epochs = 300
     lr = 1e-3
     batch_size = 128
 

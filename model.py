@@ -1434,12 +1434,13 @@ class ML_VAE(nn.Module):
         # ZU
         fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
+        mean_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)  # style
         for i in range(dim_z):
             arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                encoded = torch.matmul(simulated_latent, self.U)
+                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
@@ -1453,12 +1454,13 @@ class ML_VAE(nn.Module):
         # ZV
         fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
+        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)  # class
         for i in range(dim_z):
             arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[2]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
                 simulated_latent[0][i] = j
-                encoded = torch.matmul(simulated_latent, self.V)
+                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
@@ -1472,15 +1474,16 @@ class ML_VAE(nn.Module):
 
     def plot_grad_simu_repre(self, min_, mean_, max_):
         # Plot the gradient map of simulated data in all directions of the latent space
-        # ZU
+        # ZU, class
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
+        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)  # style
         for i in range(dim_z):
             arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
                 simulated_latent[0][i] = j
-                encoded = torch.matmul(simulated_latent, self.U)
+                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
@@ -1498,15 +1501,16 @@ class ML_VAE(nn.Module):
         plt.savefig('visualization/gradient_simulation_latent_ZU.png', bbox_inches='tight')
         plt.close()
 
-        # ZV
+        # ZV, style
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
+        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)  # class
         for i in range(dim_z):
-            arange = np.linspace(min_[0][i], max_[0][i], num=11)
+            arange = np.linspace(min_[1][i], max_[1][i], num=11)
             for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=device)
+                simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=device)
                 simulated_latent[0][i] = j
-                encoded = torch.matmul(simulated_latent, self.V)
+                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
