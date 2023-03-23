@@ -28,6 +28,12 @@ if __name__ == '__main__':
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
+    # make directory
+    if not os.path.exists('model'):
+        os.mkdir('model')
+    if not os.path.exists('visualization'):
+        os.mkdir('visualization')
+
     # hyperparameter
     epochs = 300
     lr = 1e-3
@@ -59,8 +65,6 @@ if __name__ == '__main__':
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
-    if not os.path.exists('model'):
-        os.mkdir('model')
     torch.save(autoencoder, 'model/{}_ML_VAE_starmen'.format(fold))
     logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
     logger.info(f"Model saved in model/{fold}_ML_VAE_starmen")
