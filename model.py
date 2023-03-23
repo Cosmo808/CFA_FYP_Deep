@@ -1370,8 +1370,8 @@ class ML_VAE(nn.Module):
             self.plot_simu_repre(min_, mean_, max_)
             self.plot_grad_simu_repre(min_, mean_, max_)
 
-            logger.info(f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{(style_kl_loss + class_kl_loss).cpu().detach().numpy():.3e}")
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+            logger.info(f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3}/{(style_kl_loss + class_kl_loss).cpu().detach().numpy():.3}")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.1} seconds")
 
         print('Complete training')
         return

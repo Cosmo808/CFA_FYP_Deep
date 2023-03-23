@@ -25,12 +25,6 @@ fold = 0
 
 
 if __name__ == '__main__':
-    """
-        For debugging purposes only, once the architectures and training routines are efficient,
-        this file will not be called as a script anymore.
-        """
-
-    # logger.info("DEBUGGING THE network.py FILE")
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
