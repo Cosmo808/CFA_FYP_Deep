@@ -21,7 +21,7 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-fold = 0
+fold = 4
 
 
 if __name__ == '__main__':
@@ -57,6 +57,7 @@ if __name__ == '__main__':
 
     # training
     autoencoder = ML_VAE()
+    autoencoder.device = device
     X, Y = data_generator.generate_XY(train_data)
     X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
     autoencoder.X, autoencoder.Y = X, Y
