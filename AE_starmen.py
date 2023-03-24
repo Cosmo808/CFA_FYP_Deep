@@ -7,7 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from model import ML_VAE
+from model import rank_VAE
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -56,11 +56,12 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = ML_VAE()
+    autoencoder = rank_VAE()
     autoencoder.device = device
-    X, Y = data_generator.generate_XY(train_data)
-    X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
-    autoencoder.X, autoencoder.Y = X, Y
+    if hasattr(autoencoder, 'X'):
+        X, Y = data_generator.generate_XY(train_data)
+        X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
+        autoencoder.X, autoencoder.Y = X, Y
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam

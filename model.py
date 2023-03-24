@@ -1452,11 +1452,11 @@ class ML_VAE(nn.Module):
         plt.subplots_adjust(wspace=0, hspace=0)
         mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # class
         for i in range(dim_z):
-            arange = np.linspace(min_[0][i], max_[0][i], num=11)
+            arange = np.linspace(min_[1][i], max_[1][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)
                 simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+                encoded = torch.cat((simulated_latent, mean_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
@@ -1473,7 +1473,7 @@ class ML_VAE(nn.Module):
         # ZU, class
         fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
         plt.subplots_adjust(wspace=0, hspace=0)
-        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # style
+        mean_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)  # style
         for i in range(dim_z):
             arange = np.linspace(min_[0][i], max_[0][i], num=11)
             for idx, j in enumerate(arange):
@@ -1507,7 +1507,7 @@ class ML_VAE(nn.Module):
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)
                 simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+                encoded = torch.cat((simulated_latent, mean_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
@@ -1573,9 +1573,10 @@ class rank_VAE(nn.Module):
     def __init__(self):
         super(rank_VAE, self).__init__()
         nn.Module.__init__(self)
-        self.beta = 5
-        self.gamma = 0.1
         self.name = 'rank_VAE'
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.beta = 5
+        self.gamma = 10
 
         # zs encoder, dim=dimz-1
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
@@ -1655,18 +1656,25 @@ class rank_VAE(nn.Module):
         return recon_error, kl_divergence
 
     def rank_loss(self, subject, timepoint, zpsi):
-        visits = 3
         rank_loss = 0
+        num = 0.0
 
-        subject, cnt = np.unique(subject, return_counts=True)
-        select_subject = [s for i, s in enumerate(subject) if cnt[i] >= 3]
-        select_index = [[np.where(subject == sub)][:visits] for sub in select_subject]
-        for index in select_index:
-            select_tp = torch.tensor(timepoint[index], device=self.device).float()
-            select_zpsi = zpsi[index]
-            rand_zpsi = torch.argsort(select_zpsi)
-            rank_loss += torch.sum((rand_zpsi - select_tp) ** 2)
-
+        subject = torch.squeeze(subject)
+        timepoint = torch.squeeze(timepoint)
+        unique_subject, cnt = torch.unique(subject, return_counts=True)
+        select_subject = [s.squeeze() for i, s in enumerate(unique_subject) if cnt[i] >= 2]
+        if len(select_subject) == 0:
+            return torch.tensor(0.0, device=self.device)
+        else:
+            select_index = [np.squeeze(np.nonzero(subject == sub)) for sub in select_subject]
+            for index in select_index:
+                select_tp = timepoint[index].squeeze()
+                rank_tp = torch.argsort(select_tp)
+                select_zpsi = zpsi[index].squeeze()
+                rand_zpsi = torch.argsort(select_zpsi)
+                rank_loss += torch.sum((rand_zpsi - rank_tp) ** 2)
+                num += len(index)
+            return rank_loss / num
 
     def train_(self, data_loader, test, optimizer, num_epochs=20):
 
@@ -1740,10 +1748,6 @@ class rank_VAE(nn.Module):
         return
 
     def evaluate(self, data):
-        """
-        This is called on a subset of the dataset and returns the encoded latent variables as well as the evaluation
-        loss for this subset.
-        """
         self.to(self.device)
         self.training = False
         self.eval()
@@ -1754,14 +1758,18 @@ class rank_VAE(nn.Module):
         with torch.no_grad():
             for data in dataloader:
                 image = torch.tensor([[np.load(path)] for path in data[0]]).float()
+                subject = torch.tensor([[s for s in data[1]]], device=self.device)
+                timepoint = torch.tensor([[tp for tp in data[4]]], device=self.device)
 
                 input_ = Variable(image).to(self.device)
-                style_mu, style_logVar, class_mu, class_logVar, style_encoded, class_encoded = self.forward(input_)
-                encoded = torch.cat((style_encoded, class_encoded), dim=1)
+                zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = self.forward(input_)
+                encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
                 reconstructed = self.decoder(encoded)
-                reconstruction_loss, style_kl_loss = self.loss(style_mu, style_logVar, input_, reconstructed)
-                reconstruction_loss, class_kl_loss = self.loss(class_mu, class_logVar, input_, reconstructed)
-                loss = reconstruction_loss + self.beta * (style_kl_loss + class_kl_loss)
+                reconstruction_loss, zs_kl_loss = self.loss(zs_mu, zs_logVar, input_, reconstructed)
+                reconstruction_loss, zpsi_kl_loss = self.loss(zpsi_mu, zpsi_logVar, input_, reconstructed)
+                rank_loss = self.rank_loss(subject, timepoint, zpsi_encoded)
+
+                loss = reconstruction_loss + self.beta * (zs_kl_loss + zpsi_kl_loss) + self.gamma * rank_loss
                 self.test_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
 
                 tloss += float(loss)
@@ -1794,35 +1802,33 @@ class rank_VAE(nn.Module):
     def plot_simu_repre(self, min_, mean_, max_):
         # Plot simulated data in all directions of the latent space
         # ZU
-        fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
+        fig, axes = plt.subplots(1, 11, figsize=(22, 2))
         plt.subplots_adjust(wspace=0, hspace=0)
-        mean_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)  # style
-        for i in range(dim_z):
-            arange = np.linspace(min_[0][i], max_[0][i], num=11)
-            for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)
-                simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
-                simulated_img = self.decoder(encoded)
-                axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
+        mean_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)  # zs
+        arange = np.linspace(min_[0][0], max_[0][0], num=11)
+        for idx, j in enumerate(arange):
+            simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)
+            simulated_latent[0][0] = j
+            encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+            simulated_img = self.decoder(encoded)
+            axes[idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
-            for ax in axe:
-                ax.set_xticks([])
-                ax.set_yticks([])
+            axe.set_xticks([])
+            axe.set_yticks([])
 
         plt.savefig('visualization/simulation_latent_ZU.png', bbox_inches='tight')
         plt.close()
 
         # ZV
-        fig, axes = plt.subplots(dim_z, 11, figsize=(22, 2 * dim_z))
+        fig, axes = plt.subplots(dim_z - 1, 11, figsize=(22, 2 * (dim_z - 1)))
         plt.subplots_adjust(wspace=0, hspace=0)
-        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # class
-        for i in range(dim_z):
-            arange = np.linspace(min_[0][i], max_[0][i], num=11)
+        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # zpsi
+        for i in range(dim_z - 1):
+            arange = np.linspace(min_[1][i], max_[1][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)
                 simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+                encoded = torch.cat((simulated_latent, mean_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 axes[i][idx].matshow(255 * simulated_img[0][0].cpu().detach().numpy())
         for axe in axes:
@@ -1837,27 +1843,25 @@ class rank_VAE(nn.Module):
     def plot_grad_simu_repre(self, min_, mean_, max_):
         # Plot the gradient map of simulated data in all directions of the latent space
         # ZU, class
-        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
+        fig, axes = plt.subplots(1, 10, figsize=(20, 2))
         plt.subplots_adjust(wspace=0, hspace=0)
-        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # style
-        for i in range(dim_z):
-            arange = np.linspace(min_[0][i], max_[0][i], num=11)
-            for idx, j in enumerate(arange):
-                simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)
-                simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
-                simulated_img = self.decoder(encoded)
-                if idx == 0:
-                    template = simulated_img
-                    continue
-                grad_img = simulated_img - template
+        mean_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)  # zs
+        arange = np.linspace(min_[0][0], max_[0][0], num=11)
+        for idx, j in enumerate(arange):
+            simulated_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)
+            simulated_latent[0][0] = j
+            encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+            simulated_img = self.decoder(encoded)
+            if idx == 0:
                 template = simulated_img
-                axes[i][idx - 1].matshow(grad_img[0][0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
-                                         norm=matplotlib.colors.CenteredNorm())
+                continue
+            grad_img = simulated_img - template
+            template = simulated_img
+            axes[idx - 1].matshow(grad_img[0][0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+                                     norm=matplotlib.colors.CenteredNorm())
         for axe in axes:
-            for ax in axe:
-                ax.set_xticks([])
-                ax.set_yticks([])
+            axe.set_xticks([])
+            axe.set_yticks([])
         fig.colorbar(
             matplotlib.cm.ScalarMappable(cmap=matplotlib.cm.get_cmap('bwr'), norm=matplotlib.colors.CenteredNorm()),
             cax=fig.add_axes([0.92, 0.15, 0.01, 0.7]))
@@ -1865,15 +1869,15 @@ class rank_VAE(nn.Module):
         plt.close()
 
         # ZV, style
-        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * dim_z))
+        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * (dim_z - 1)))
         plt.subplots_adjust(wspace=0, hspace=0)
-        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # class
-        for i in range(dim_z):
+        mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # zpsi
+        for i in range(dim_z - 1):
             arange = np.linspace(min_[1][i], max_[1][i], num=11)
             for idx, j in enumerate(arange):
                 simulated_latent = torch.tensor([[mean for mean in mean_[1]]], device=self.device)
                 simulated_latent[0][i] = j
-                encoded = torch.cat((mean_latent, simulated_latent), dim=1)
+                encoded = torch.cat((simulated_latent, mean_latent), dim=1)
                 simulated_img = self.decoder(encoded)
                 if idx == 0:
                     template = simulated_img
@@ -1896,26 +1900,23 @@ class rank_VAE(nn.Module):
     @staticmethod
     def plot_z_distribution(ZU, ZV):
         min_zu, mean_zu, max_zu = [], [], []
-        fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
-        plt.subplots_adjust(wspace=0.1, hspace=0)
-        for i in range(dim_z):
-            zu = ZU[:, i].cpu().detach().numpy()
-            axes[i].hist(zu, bins=70, density=True)
-            axes[i].set_title('{}-th dim'.format(i + 1))
-            axes[i].set_xlabel(f"Min: {np.min(zu):.4}\nMean: {np.mean(zu):.4}\nMax: {np.max(zu):.4}")
-            min_zu.append(np.min(zu))
-            mean_zu.append(np.mean(zu))
-            max_zu.append(np.max(zu))
-        for axe in axes:
-            axe.set_yticks([])
-            # axe.set_xlim(left=-1, right=1)
+        fig, axes = plt.subplots(1, 1, figsize=(4, 4))
+        zu = ZU.cpu().detach().numpy()
+        axes.hist(zu, bins=70, density=True)
+        axes.set_title('{}-th dim'.format(1))
+        axes.set_xlabel(f"Min: {np.min(zu):.4}\nMean: {np.mean(zu):.4}\nMax: {np.max(zu):.4}")
+        min_zu.append(np.min(zu))
+        mean_zu.append(np.mean(zu))
+        max_zu.append(np.max(zu))
+        axes.set_yticks([])
+        # axe.set_xlim(left=-1, right=1)
         plt.savefig('visualization/ZU_distribution.png', bbox_inches='tight')
         plt.close()
 
         min_zv, mean_zv, max_zv = [], [], []
-        fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
+        fig, axes = plt.subplots(1, dim_z - 1, figsize=(4 * (dim_z - 1), 4))
         plt.subplots_adjust(wspace=0.1, hspace=0)
-        for i in range(dim_z):
+        for i in range(dim_z - 1):
             zv = ZV[:, i].cpu().detach().numpy()
             axes[i].hist(zv, bins=70, density=True)
             axes[i].set_title('{}-th dim'.format(i + 1))
