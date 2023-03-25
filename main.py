@@ -7,7 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from model import rank_VAE
+from model import ML_VAE
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -21,7 +21,7 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-fold = 4
+fold = 0
 
 
 if __name__ == '__main__':
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = rank_VAE()
+    autoencoder = ML_VAE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
@@ -67,6 +67,6 @@ if __name__ == '__main__':
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
-    torch.save(autoencoder, 'model/{}_ML_VAE_starmen'.format(fold))
+    torch.save(autoencoder, 'model/{}_fold_{}'.format(fold, autoencoder.name))
     logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
-    logger.info(f"Model saved in model/{fold}_ML_VAE_starmen")
+    logger.info("Model saved in model/{}_fold_{}".format(fold, autoencoder.name))

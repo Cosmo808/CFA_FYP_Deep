@@ -1869,7 +1869,7 @@ class rank_VAE(nn.Module):
         plt.close()
 
         # ZV, style
-        fig, axes = plt.subplots(dim_z, 10, figsize=(20, 2 * (dim_z - 1)))
+        fig, axes = plt.subplots(dim_z - 1, 10, figsize=(20, 2 * (dim_z - 1)))
         plt.subplots_adjust(wspace=0, hspace=0)
         mean_latent = torch.tensor([[mean for mean in mean_[0]]], device=self.device)  # zpsi
         for i in range(dim_z - 1):

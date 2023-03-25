@@ -3,6 +3,9 @@ from torch.utils import data
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
 import matplotlib.pyplot as plt
+import scipy.stats as stats
+from sklearn.cross_decomposition import PLSRegression
+from torch.autograd import Variable
 import numpy as np
 import logging
 import sys
@@ -24,182 +27,130 @@ if __name__ == '__main__':
     logger.info(f"Device is {device}")
     data_generator = Data_preprocess()
 
-    train_recon_ours, test_recon_ours = [], []
-    train_recon_bvae, test_recon_bvae = [], []
-    orthogonality = []
-    pearsonr = []
-    spearmanr = []
-    # for fold in range(5):
-    #     logger.info(f"##### Fold {fold + 1}/5 #####\n")
-    #
-    #     # load two models
-    #     autoencoder = torch.load('5-fold/ours/{}_fold_starmen'.format(fold), map_location=device)
-    #     beta_VAE = torch.load('5-fold/beta_VAE/{}_fold_beta_VAE'.format(fold), map_location=device)
-    #     autoencoder.eval()
-    #     beta_VAE.eval()
-    #
-    #     # load train and test data
-    #     train_data, test_data = data_generator.generate_train_test(fold)
-    #     train_data.requires_grad = False
-    #     test_data.requires_grad = False
-    #
-    #     Dataset = Dataset_starmen
-    #     train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
-    #                     train_data['timepoint'], train_data['first_age'])
-    #     test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
-    #                    test_data['timepoint'], test_data['first_age'])
-    #
-    #     train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=False,
-    #                                                num_workers=0, drop_last=False, pin_memory=True)
-    #     test_loader = torch.utils.data.DataLoader(test, batch_size=256, shuffle=False,
-    #                                               num_workers=0, drop_last=False, pin_memory=True)
-    #
-    #     # self-recon loss on train dataset
-    #     loss_ours, loss_bvae = 0, 0
-    #     batch = 0
-    #     with torch.no_grad():
-    #         for data in train_loader:
-    #             batch += 1
-    #
-    #             image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-    #             input_ = Variable(image).to(device)
-    #
-    #             # ours
-    #             reconstructed, _, _, _ = autoencoder.forward(input_)
-    #             self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #
-    #             # beta VAE
-    #             mu, logVar, reconstructed = beta_VAE.forward(input_)
-    #             reconstruction_loss, a = beta_VAE.loss(mu, logVar, input_, reconstructed)
-    #
-    #             loss_ours += float(self_reconstruction_loss)
-    #             loss_bvae += float(reconstruction_loss)
-    #
-    #     train_recon_ours.append(loss_ours / batch / 64 / 64)
-    #     train_recon_bvae.append(loss_bvae / batch / 64 / 64)
-    #
-    #     # self-recon loss on test dataset
-    #     loss_ours, loss_bvae = 0, 0
-    #     batch = 0
-    #     with torch.no_grad():
-    #         for data in test_loader:
-    #             batch += 1
-    #
-    #             image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-    #             input_ = Variable(image).to(device)
-    #
-    #             # ours
-    #             reconstructed, _, _, _ = autoencoder.forward(input_)
-    #             self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #
-    #             # beta VAE
-    #             mu, logVar, reconstructed = beta_VAE.forward(input_)
-    #             reconstruction_loss, _ = beta_VAE.loss(mu, logVar, input_, reconstructed)
-    #
-    #             loss_ours += float(self_reconstruction_loss)
-    #             loss_bvae += float(reconstruction_loss)
-    #
-    #     test_recon_ours.append(loss_ours / batch / 64 / 64)
-    #     test_recon_bvae.append(loss_bvae / batch / 64 / 64)
-    #
-    #     # get Z, ZU, ZV
-    #     with torch.no_grad():
-    #         Z, ZU, ZV = None, None, None
-    #         # for data in train_loader:
-    #         #     image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-    #         #
-    #         #     # self-reconstruction loss
-    #         #     input_ = Variable(image).to(device)
-    #         #     reconstructed, z, zu, zv = autoencoder.forward(input_)
-    #         #     self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #         #
-    #         #     # store Z, ZU, ZV
-    #         #     if Z is None:
-    #         #         Z, ZU, ZV = z, zu, zv
-    #         #     else:
-    #         #         Z = torch.cat((Z, z), 0)
-    #         #         ZU = torch.cat((ZU, zu), 0)
-    #         #         ZV = torch.cat((ZV, zv), 0)
-    #
-    #         for data in test_loader:
-    #             image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-    #
-    #             # self-reconstruction loss
-    #             input_ = Variable(image).to(device)
-    #             reconstructed, z, zu, zv = autoencoder.forward(input_)
-    #             self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #
-    #             # store Z, ZU, ZV
-    #             if Z is None:
-    #                 Z, ZU, ZV = z, zu, zv
-    #             else:
-    #                 Z = torch.cat((Z, z), 0)
-    #                 ZU = torch.cat((ZU, zu), 0)
-    #                 ZV = torch.cat((ZV, zv), 0)
-    #
-    #     # min_, mean_, max_ = autoencoder.plot_z_distribution(Z, ZU, ZV)
-    #     # autoencoder.plot_simu_repre(min_, mean_, max_)
-    #     # autoencoder.plot_grad_simu_repre(min_, mean_, max_)
-    #     # exit()
-    #
-    #     ortho = torch.matmul(ZU, torch.transpose(ZV, 0, 1))
-    #     ortho = torch.det(ortho)
-    #     orthogonality.append(float(ortho))
-    #
-    #     U, S, V = torch.pca_lowrank(ZU)
-    #     PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
-    #     # get psi
-    #     psi = test_data['alpha'] * (test_data['age'] - test_data['baseline_age'])
-    #     pearsonr.append(stats.pearsonr(PCA_ZU, psi)[0])
-    #     spearmanr.append(stats.spearmanr(PCA_ZU, psi)[0])
-    #
-    # print('train ours: ', np.mean(train_recon_ours), np.std(train_recon_ours))
-    # print('test ours: ', np.mean(test_recon_ours), np.std(test_recon_ours))
-    #
-    # print('train bvae: ', np.mean(train_recon_bvae), np.std(train_recon_bvae))
-    # print('test bvae: ', np.mean(test_recon_bvae), np.std(test_recon_bvae))
-    #
-    # print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
-    # print('pearsonr: ', np.mean(pearsonr), np.std(pearsonr))
-    # print('spearmanr: ', np.mean(spearmanr), np.std(spearmanr))
+    train_recon, test_recon = [], []
+    orthogonality, pls = [], []
+    pearsonr, spearmanr = [], []
+    for fold in range(5):
+        logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
-    autoencoder = torch.load('model/best_starmen', map_location=device)
-    autoencoder.eval()
-    # load train and test data
-    train_data, test_data = data_generator.generate_train_test(0)
-    train_data.requires_grad = False
-    test_data.requires_grad = False
+        # load the model
+        model_name = 'ML_VAE'
+        autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
+        autoencoder.device = device
+        autoencoder.eval()
 
-    Dataset = Dataset_starmen
-    train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
-                    train_data['timepoint'], train_data['first_age'])
-    test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
-                   test_data['timepoint'], test_data['first_age'])
+        # load train and test data
+        train_data, test_data = data_generator.generate_train_test(fold)
+        train_data.requires_grad = False
+        test_data.requires_grad = False
 
-    train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=False,
-                                               num_workers=0, drop_last=False, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=256, shuffle=False,
-                                              num_workers=0, drop_last=False, pin_memory=True)
-    for data in test_loader:
-        image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-        break
-    image = image[:50]
-    recon_img, z, zu, zv = autoencoder.forward(image)
-    global_tra = autoencoder.decoder(zu)
-    indiv_hetero = autoencoder.decoder(zv)
-    fig, axes = plt.subplots(4 * (image.shape[0] // 10), 10, figsize=(20, 8 * (image.shape[0] // 10)))
-    plt.subplots_adjust(wspace=0, hspace=0)
-    for i in range(image.shape[0] // 10):
-        for j in range(10):
-            axes[4 * i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 1][j].matshow(255 * recon_img[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 2][j].matshow(255 * global_tra[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 3][j].matshow(255 * indiv_hetero[10 * i + j][0].cpu().detach().numpy())
-    for axe in axes:
-        for ax in axe:
-            ax.set_xticks([])
-            ax.set_yticks([])
-    plt.savefig('visualization/a.png', bbox_inches='tight')
-    plt.close()
-    for i in range(image.shape[0] // 10):
-        print(test_data['age'].iloc[i * 10:(i + 1) * 10])
+        Dataset = Dataset_starmen
+        train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
+                        train_data['timepoint'], train_data['first_age'])
+        test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
+                       test_data['timepoint'], test_data['first_age'])
+
+        train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=False,
+                                                   num_workers=0, drop_last=False, pin_memory=True)
+        test_loader = torch.utils.data.DataLoader(test, batch_size=256, shuffle=False,
+                                                  num_workers=0, drop_last=False, pin_memory=True)
+
+        # self-recon loss on train dataset
+        losses = 0
+        batches = 0
+        ZU, ZV = None, None
+        with torch.no_grad():
+            autoencoder.Training = False
+            for data in train_loader:
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
+                input_ = Variable(image).to(autoencoder.device)
+                zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
+                encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
+                reconstructed = autoencoder.decoder(encoded)
+                reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
+
+                loss = reconstruction_loss
+
+                # store ZU, ZV
+                # if ZU is None:
+                #     ZU, ZV = zpsi_encoded, zs_encoded
+                # else:
+                #     ZU = torch.cat((ZU, zpsi_encoded), 0)
+                #     ZV = torch.cat((ZV, zs_encoded), 0)
+
+                losses += float(loss)
+                batches += 1
+
+        train_recon.append(losses / batches / 64 / 64)
+
+        # self-recon loss on test dataset
+        losses = 0
+        batches = 0
+        with torch.no_grad():
+            autoencoder.Training = False
+            for data in test_loader:
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
+                input_ = Variable(image).to(autoencoder.device)
+                zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
+                encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
+                reconstructed = autoencoder.decoder(encoded)
+                reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
+
+                loss = reconstruction_loss
+
+                # store ZU, ZV
+                if ZU is None:
+                    ZU, ZV = zpsi_encoded, zs_encoded
+                else:
+                    ZU = torch.cat((ZU, zpsi_encoded), 0)
+                    ZV = torch.cat((ZV, zs_encoded), 0)
+
+                losses += float(loss)
+                batches += 1
+
+        test_recon.append(losses / batches / 64 / 64)
+
+        # plot latent space
+        min_, mean_, max_ = autoencoder.plot_z_distribution(ZU, ZV)
+        autoencoder.plot_simu_repre(min_, mean_, max_)
+        autoencoder.plot_grad_simu_repre(min_, mean_, max_)
+
+        # calculate orthogonality between ZU and ZV
+        if ZU.size()[1:] == ZV.size()[1:]:
+            ortho = torch.matmul(ZU, torch.transpose(ZV, 0, 1))
+            ortho = torch.det(ortho)
+            orthogonality.append(float(ortho))
+
+        # calculate pls correlation between ZU and ZV
+        ZU_pls, ZV_pls = ZU.cpu().detach().numpy(), ZV.cpu().detach().numpy()
+        pls_model = PLSRegression(n_components=1)
+        pls_model.fit(ZV_pls, ZU_pls)
+        pred = pls_model.predict(ZV_pls)
+        pls_corr = np.corrcoef(pred.reshape(-1), ZU_pls.reshape(-1))[0, 1]
+        pls.append(pls_corr)
+
+        # PCA for ZU
+        if ZU.size()[-1] > 1:
+            _, _, V = torch.pca_lowrank(ZU)
+            PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
+        else:
+            PCA_ZU = ZU.cpu().detach().numpy().squeeze()
+        # get psi
+        psi = test_data['alpha'] * (test_data['age'] - test_data['baseline_age'])
+        # calculate pearson and spearman correlation
+        if ZU.size()[-1] == ZV.size()[-1]:
+            _, _, V = torch.pca_lowrank(ZV)
+            PCA_ZV = -1 * torch.matmul(ZV, V[:, 0]).cpu().detach().numpy()
+            pearsonr.append(max(np.abs(stats.pearsonr(PCA_ZU, psi)[0]), np.abs(stats.pearsonr(PCA_ZV, psi)[0])))
+            spearmanr.append(max(np.abs(stats.spearmanr(PCA_ZU, psi)[0]), np.abs(stats.spearmanr(PCA_ZV, psi)[0])))
+        else:
+            pearsonr.append(np.abs(stats.pearsonr(PCA_ZU, psi)[0]))
+            spearmanr.append(np.abs(stats.spearmanr(PCA_ZU, psi)[0]))
+
+    print('recon train: ', np.mean(train_recon), np.std(train_recon))
+    print('recon test: ', np.mean(test_recon), np.std(test_recon))
+    print('pearsonr: ', np.mean(pearsonr), np.std(pearsonr))
+    print('spearmanr: ', np.mean(spearmanr), np.std(spearmanr))
+    print('pls: ', np.mean(pls), np.std(pls))
+    print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
+    print(pearsonr, spearmanr)
