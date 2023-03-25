@@ -38,7 +38,7 @@ if __name__ == '__main__':
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'ML_VAE'
+        model_name = 'starmen'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
