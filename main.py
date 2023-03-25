@@ -7,7 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
-from model import ML_VAE
+import model
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         os.mkdir('visualization')
 
     # hyperparameter
-    epochs = 400
+    epochs = 300
     lr = 1e-3
     batch_size = 128
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = ML_VAE()
+    autoencoder = model.rank_VAE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)

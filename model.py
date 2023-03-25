@@ -1374,10 +1374,6 @@ class ML_VAE(nn.Module):
         return
 
     def evaluate(self, data):
-        """
-        This is called on a subset of the dataset and returns the encoded latent variables as well as the evaluation
-        loss for this subset.
-        """
         self.to(self.device)
         self.training = False
         self.eval()
@@ -1388,7 +1384,6 @@ class ML_VAE(nn.Module):
         with torch.no_grad():
             for data in dataloader:
                 image = torch.tensor([[np.load(path)] for path in data[0]]).float()
-
                 input_ = Variable(image).to(self.device)
                 style_mu, style_logVar, class_mu, class_logVar, style_encoded, class_encoded = self.forward(input_)
                 encoded = torch.cat((style_encoded, class_encoded), dim=1)
