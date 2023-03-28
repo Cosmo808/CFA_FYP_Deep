@@ -5,7 +5,6 @@ from data_preprocess import Data_preprocess
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.linear_model import LinearRegression
 from torch.autograd import Variable
 import numpy as np
 import logging
