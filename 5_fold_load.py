@@ -172,4 +172,3 @@ if __name__ == '__main__':
     print('spearmanr: ', np.mean(spearmanr), np.std(spearmanr))
     print('pls_R2: ', np.mean(pls_R2), np.std(pls_R2))
     print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
-    print(pearsonr, '\n', spearmanr, '\n', pls_R2, '\n', orthogonality)
