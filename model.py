@@ -7,7 +7,10 @@ from time import time
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
+from tqdm import tqdm
+import sklearn
 import logging
+import math
 import sys
 import os
 
@@ -44,8 +47,8 @@ class AE_starmen(nn.Module):
         self.fc11 = nn.Linear(2048, dim_z)
 
         self.fc3 = nn.Linear(dim_z, 512)
-        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
-        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn4 = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(32)
@@ -97,7 +100,7 @@ class AE_starmen(nn.Module):
         recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_loss
 
-    def train_(self, data_loader, test, optimizer, num_epochs=20):
+    def train_(self, data_loader, test, optimizer, num_epochs):
 
         self.to(self.device)
         best_loss = 1e10
@@ -593,8 +596,8 @@ class AE_starmen_wCRL(nn.Module):
         self.fc11 = nn.Linear(2048, dim_z)
 
         self.fc3 = nn.Linear(dim_z, 512)
-        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
-        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn4 = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(32)
@@ -646,7 +649,7 @@ class AE_starmen_wCRL(nn.Module):
         recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_loss
 
-    def train_(self, data_loader, test, optimizer, num_epochs=20):
+    def train_(self, data_loader, test, optimizer, num_epochs):
 
         self.to(self.device)
         best_loss = 1e10
@@ -1092,8 +1095,8 @@ class beta_VAE(nn.Module):
         self.fc11 = nn.Linear(2048, dim_z)
 
         self.fc3 = nn.Linear(dim_z, 512)
-        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
-        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn4 = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(32)
@@ -1138,7 +1141,7 @@ class beta_VAE(nn.Module):
         recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_error, kl_divergence
 
-    def train_(self, data_loader, test, optimizer, num_epochs=20):
+    def train_(self, data_loader, test, optimizer, num_epochs):
 
         self.to(self.device)
         best_loss = 1e10
@@ -1256,8 +1259,8 @@ class ML_VAE(nn.Module):
         self.fc13 = nn.Linear(2048, dim_z)
 
         self.fc3 = nn.Linear(dim_z * 2, 512)
-        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
-        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn4 = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(32)
@@ -1306,13 +1309,12 @@ class ML_VAE(nn.Module):
         recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_error, kl_divergence
 
-    def train_(self, data_loader, test, optimizer, num_epochs=20):
+    def train_(self, data_loader, test, optimizer, num_epochs):
 
         self.to(self.device)
         best_loss = 1e10
         es = 0
 
-        ZU, ZV = None, None
         for epoch in range(num_epochs):
 
             start_time = time()
@@ -1324,6 +1326,7 @@ class ML_VAE(nn.Module):
             tloss = 0.0
             nb_batches = 0
 
+            ZU, ZV = None, None
             for data in data_loader:
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 optimizer.zero_grad()
@@ -1595,8 +1598,8 @@ class rank_VAE(nn.Module):
 
         # decoder
         self.fc3 = nn.Linear(dim_z, 512)
-        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 32 x 16 x 16
-        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 16 x 32 x 32
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
         self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
         self.bn7 = nn.BatchNorm2d(64)
         self.bn8 = nn.BatchNorm2d(32)
@@ -1671,13 +1674,12 @@ class rank_VAE(nn.Module):
                 num += len(index)
             return rank_loss / num
 
-    def train_(self, data_loader, test, optimizer, num_epochs=20):
+    def train_(self, data_loader, test, optimizer, num_epochs):
 
         self.to(self.device)
         best_loss = 1e10
         es = 0
 
-        ZU, ZV = None, None
         for epoch in range(num_epochs):
 
             start_time = time()
@@ -1689,6 +1691,7 @@ class rank_VAE(nn.Module):
             tloss = 0.0
             nb_batches = 0
 
+            ZU, ZV = None, None
             for data in data_loader:
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 subject = torch.tensor([[s for s in data[1]]], device=self.device)
@@ -1929,3 +1932,182 @@ class rank_VAE(nn.Module):
         mean_ = [mean_zu, mean_zv]
         max_ = [max_zu, max_zv]
         return min_, mean_, max_
+
+
+class LNE(nn.Module):
+    def __init__(self):
+        super(LNE, self).__init__()
+        nn.Module.__init__(self)
+        self.name = 'LNE'
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.lambda_proto = 1.0
+        self.lambda_dir = 1.0
+
+        self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
+        self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
+        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)  # 32 x 8 x 8
+        self.bn1 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.bn3 = nn.BatchNorm2d(32)
+        self.fc10 = nn.Linear(2048, 1024)
+
+        self.upconv1 = nn.ConvTranspose2d(16, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
+        self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
+        self.bn4 = nn.BatchNorm2d(64)
+        self.bn5 = nn.BatchNorm2d(32)
+
+        self.train_loss, self.test_loss = [], []
+
+        self.N_km = [I // 5, I // 10, I // 20]
+        self.num_nb = 5
+        self.concentration_list = None
+        self.prototype_list = None
+
+    def encoder(self, image):
+        h1 = F.relu(self.bn1(self.conv1(image)))
+        h2 = F.relu(self.bn2(self.conv2(h1)))
+        h3 = F.relu(self.bn3(self.conv3(h2)))
+        z = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
+        return z
+
+    def decoder(self, encoded):
+        h6 = encoded.reshape([encoded.size()[0], 16, 8, 8])
+        h7 = F.relu(self.bn4(self.upconv1(h6)))
+        h8 = F.relu(self.bn5(self.upconv2(h7)))
+        reconstructed = F.relu(self.upconv3(h8))
+        return reconstructed
+
+    def build_graph_batch(self, zs):
+        z1 = zs[0]
+        bs = z1.shape[0]
+        dis_mx = torch.zeros(bs, bs).to(self.device)
+        for i in range(bs):
+            for j in range(i + 1, bs):
+                dis_mx[i, j] = torch.sum((z1[i] - z1[j]) ** 2)
+                dis_mx[j, i] = dis_mx[i, j]
+        # sigma = (torch.sort(dis_mx)[0][:, -1])**0.5 - (torch.sort(dis_mx)[0][:, 1])**0.5
+        adj_mx = torch.exp(-dis_mx / 100)
+        # adj_mx = torch.exp(-dis_mx / (2*sigma**2))
+        # pdb.set_trace()
+        if self.num_nb < bs:
+            adj_mx_filter = torch.zeros(bs, bs).to(self.device)
+            for i in range(bs):
+                ks = torch.argsort(dis_mx[i], descending=False)[:self.num_nb + 1]
+                adj_mx_filter[i, ks] = adj_mx[i, ks]
+                adj_mx_filter[i, i] = 0.
+            return adj_mx_filter
+        else:
+            return adj_mx * (1. - torch.eye(bs, bs).to(self.device))
+
+    def build_graph_dataset(self, zs_all, zs):
+        z1_all = zs_all[0]
+        z1 = zs[0]
+        ds = z1_all.shape[0]
+        bs = z1.shape[0]
+        dis_mx = torch.zeros(bs, ds).to(self.device)
+        for i in range(bs):
+            for j in range(ds):
+                dis_mx[i, j] = torch.sum((z1[i] - z1_all[j]) ** 2)
+        # sigma = (torch.sort(dis_mx)[0][:, -1])**0.5 - (torch.sort(dis_mx)[0][:, 1])**0.5
+        adj_mx = torch.exp(-dis_mx/100)
+        # adj_mx = torch.exp(-dis_mx / (2*sigma**2))
+        if self.num_nb < bs:
+            adj_mx_filter = torch.zeros(bs, ds).to(self.device)
+            for i in range(bs):
+                ks = torch.argsort(dis_mx[i], descending=False)[:self.num_neighbours + 1]
+                adj_mx_filter[i, ks] = adj_mx[i, ks]
+            return adj_mx_filter
+        else:
+            return adj_mx * (1. - torch.eye(bs, bs).to(self.device))
+
+    @staticmethod
+    def compute_social_pooling_delta_z_batch(zs, interval, adj_mx):
+        z1, z2 = zs[0], zs[1]
+        delta_z = (z2 - z1) / interval.unsqueeze(1)      # [bs, ls]
+        delta_h = torch.matmul(adj_mx, delta_z) / adj_mx.sum(1, keepdim=True)    # [bs, ls]
+        return delta_z, delta_h
+
+    @staticmethod
+    def compute_social_pooling_delta_z_dataset(zs_all, interval_all, zs, interval, adj_mx):
+        z1, z2 = zs[0], zs[1]
+        delta_z = (z2 - z1) / interval.unsqueeze(1)  # [bs, ls]
+        z1_all, z2_all = zs_all[0], zs_all[1]
+        delta_z_all = (z2_all - z1_all) / interval_all.unsqueeze(1)  # [bs, ls]
+        delta_h = torch.matmul(adj_mx, delta_z_all) / adj_mx.sum(1, keepdim=True)  # [bs, ls]
+        return delta_z, delta_h
+
+    @staticmethod
+    def compute_recon_loss(x, recon):
+        return torch.mean((x - recon) ** 2)
+
+    @staticmethod
+    def compute_direction_loss(delta_z, delta_h):
+        delta_z_norm = torch.norm(delta_z, dim=1) + 1e-12
+        delta_h_norm = torch.norm(delta_h, dim=1) + 1e-12
+        cos = torch.sum(delta_z * delta_h, 1) / (delta_z_norm * delta_h_norm)
+        return (1. - cos).mean()
+
+    @staticmethod
+    def compute_distance_loss(delta_z, delta_h):
+        delta_z_norm = torch.norm(delta_z, dim=1) + 1e-12
+        dis = torch.norm(delta_z - delta_h, dim=1)
+        return (dis / delta_z_norm).mean()
+
+    def compute_multi_instance_NCE(self, z1, adj_mx):
+        ztz = torch.matmul(z1, z1.T)  # (bs, bs)
+        select_idx = torch.argsort(adj_mx, dim=1, descending=True)[:, :self.num_neighbours]
+        ztz_pos = torch.gather(ztz, dim=1, index=select_idx)
+        nominator = torch.logsumexp(ztz_pos, dim=1)
+        denominator = torch.logsumexp(ztz, dim=1)
+        loss = -(nominator - denominator).mean()
+        return loss
+
+    def update_kmeans(self, z1_list, cluster_ids_list, cluster_centers_list):
+        z1_list = torch.tensor(z1_list).to(self.device)
+        self.prototype_list = [torch.tensor(c).to(self.device) for c in cluster_centers_list]
+        self.concentration_list = []
+        for m in range(len(self.N_km)):  # for each round of kmeans
+            prototypes = self.prototype_list[m]
+            cluster_ids = cluster_ids_list[m]
+            concentration_m = []
+            for c in range(self.N_km[m]):  # for each cluster center
+                zs = z1_list[cluster_ids == c]
+                n_c = zs.shape[0]
+                norm = torch.norm(zs - prototypes[c].view(1, -1), dim=1).sum()
+                concentration = norm / (n_c * math.log(n_c + 10))
+                concentration_m.append(concentration)
+            self.concentration_list.append(torch.tensor(concentration_m).to(self.device))
+
+    def compute_prototype_NCE(self, z1, cluster_ids):
+        loss = 0
+        for m in range(len(self.N_km)):  # for each round of kmeans
+            prototypes_sel = self.prototype_list[m][cluster_ids[:, m].detach().cpu().numpy()]
+            concentration_sel = self.concentration_list[m][cluster_ids[:, m].detach().cpu().numpy()]
+            nominator = torch.sum(z1 * prototypes_sel / concentration_sel.view(-1, 1), 1)
+            denominator = torch.logsumexp(torch.matmul(z1, torch.transpose(self.prototype_list[m], 0, 1)) /
+                                          self.concentration_list[m].view(1, self.N_km[m]), dim=1)
+            loss += -(nominator - denominator).mean()
+        return loss / (len(self.N_km) * z1.shape[0])
+
+    def train_(self, data_loader, test, optimizer, num_epochs):
+        self.eval()
+
+        # k-means for z1
+        z1_list = []
+        for data in tqdm(data_loader):
+            image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+            z1 = self.encoder(image)
+            z1_list.append(z1.view(image.shape[0], -1))
+        z1_list = torch.cat(z1_list).detach().cpu().numpy()
+        print('Finished computing z1 for all training samples!')
+
+        cluster_ids_list = []
+        cluster_centers_list = []
+        for n_km in self.N_km:
+            kmeans = sklearn.cluster.KMeans(n_clusters=n_km).fit(z1_list)
+            cluster_centers = kmeans.cluster_centers_
+            cluster_ids = kmeans.labels_
+            cluster_ids_list.append(cluster_ids)
+            cluster_centers_list.append(cluster_centers)
+            print('Finished K-means clustering for ', n_km)
