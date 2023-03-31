@@ -56,12 +56,14 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = model.rank_VAE()
+    autoencoder = model.LNE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
         X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
         autoencoder.X, autoencoder.Y = X, Y
+    if hasattr(autoencoder, 'batch_size'):
+        autoencoder.batch_size = batch_size
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam

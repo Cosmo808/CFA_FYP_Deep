@@ -8,7 +8,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import sklearn
+from sklearn.cluster import KMeans
 import logging
 import math
 import sys
@@ -1940,6 +1940,7 @@ class LNE(nn.Module):
         nn.Module.__init__(self)
         self.name = 'LNE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.batch_size = 128
         self.lambda_proto = 1.0
         self.lambda_dir = 1.0
 
@@ -1961,6 +1962,7 @@ class LNE(nn.Module):
 
         self.N_km = [I // 5, I // 10, I // 20]
         self.num_nb = 5
+        self.sample_idx_list = None
         self.concentration_list = None
         self.prototype_list = None
 
@@ -1978,6 +1980,15 @@ class LNE(nn.Module):
         reconstructed = F.relu(self.upconv3(h8))
         return reconstructed
 
+    def forward(self, img1, img2):
+        bs = img1.shape[0]
+        zs = self.encoder(torch.cat([img1, img2], 0))
+        recons = self.decoder(zs)
+        zs_flatten = zs.view(bs * 2, -1)
+        z1, z2 = zs_flatten[:bs], zs_flatten[bs:]
+        recon1, recon2 = recons[:bs], recons[bs:]
+        return [z1, z2], [recon1, recon2]
+
     def build_graph_batch(self, zs):
         z1 = zs[0]
         bs = z1.shape[0]
@@ -1986,10 +1997,8 @@ class LNE(nn.Module):
             for j in range(i + 1, bs):
                 dis_mx[i, j] = torch.sum((z1[i] - z1[j]) ** 2)
                 dis_mx[j, i] = dis_mx[i, j]
-        # sigma = (torch.sort(dis_mx)[0][:, -1])**0.5 - (torch.sort(dis_mx)[0][:, 1])**0.5
-        adj_mx = torch.exp(-dis_mx / 100)
-        # adj_mx = torch.exp(-dis_mx / (2*sigma**2))
-        # pdb.set_trace()
+        sigma = (torch.sort(dis_mx)[0][:, -1]) ** 0.5 - (torch.sort(dis_mx)[0][:, 1]) ** 0.5
+        adj_mx = torch.exp(-dis_mx / (2 * sigma ** 2))
         if self.num_nb < bs:
             adj_mx_filter = torch.zeros(bs, bs).to(self.device)
             for i in range(bs):
@@ -2037,9 +2046,44 @@ class LNE(nn.Module):
         delta_h = torch.matmul(adj_mx, delta_z_all) / adj_mx.sum(1, keepdim=True)  # [bs, ls]
         return delta_z, delta_h
 
+    def minimatch_sampling_strategy(self, cluster_centers_list, cluster_ids_list):
+        # compute distance between clusters
+        cluster_dis_ids_list = []
+
+        for m in range(len(cluster_centers_list)):
+            cluster_centers = cluster_centers_list[m]
+            n_km = cluster_centers.shape[0]
+            cluster_dis_ids = np.zeros((n_km, n_km))
+            for i in range(n_km):
+                dis_cn = np.sqrt(np.sum((cluster_centers[i].reshape(1,-1) - cluster_centers)**2, 1))
+                cluster_dis_ids[i] = np.argsort(dis_cn)
+            cluster_dis_ids_list.append(cluster_dis_ids)
+
+        n_batch = np.ceil(I / self.batch_size).astype(int)
+        sample_idx_list = []
+        for nb in range(n_batch):
+            m_idx = np.random.choice(len(cluster_centers_list))         # select round of kmeans
+            c_idx = np.random.choice(cluster_centers_list[m_idx].shape[0])  # select a cluster
+            sample_idx_batch = []
+            n_s_b = 0
+            for c_idx_sel in cluster_dis_ids_list[m_idx][c_idx]:        # get nbr clusters given distance to selected cluster c_idx
+                sample_idx = np.where(cluster_ids_list[m_idx] == c_idx_sel)[0]
+                if n_s_b + sample_idx.shape[0] >= self.batch_size:
+                    sample_idx_batch.append(np.random.choice(sample_idx, self.batch_size - n_s_b, replace=False))
+                    break
+                else:
+                    sample_idx_batch.append(sample_idx)
+                    n_s_b += sample_idx.shape[0]
+
+            sample_idx_batch = np.concatenate(sample_idx_batch, 0)
+            sample_idx_list.append(sample_idx_batch)
+
+        sample_idx_list = np.concatenate(sample_idx_list, 0)
+        self.sample_idx_list = sample_idx_list[:I]
+
     @staticmethod
     def compute_recon_loss(x, recon):
-        return torch.mean((x - recon) ** 2)
+        return torch.mean((recon - x) ** 2)
 
     @staticmethod
     def compute_direction_loss(delta_z, delta_h):
@@ -2053,15 +2097,6 @@ class LNE(nn.Module):
         delta_z_norm = torch.norm(delta_z, dim=1) + 1e-12
         dis = torch.norm(delta_z - delta_h, dim=1)
         return (dis / delta_z_norm).mean()
-
-    def compute_multi_instance_NCE(self, z1, adj_mx):
-        ztz = torch.matmul(z1, z1.T)  # (bs, bs)
-        select_idx = torch.argsort(adj_mx, dim=1, descending=True)[:, :self.num_neighbours]
-        ztz_pos = torch.gather(ztz, dim=1, index=select_idx)
-        nominator = torch.logsumexp(ztz_pos, dim=1)
-        denominator = torch.logsumexp(ztz, dim=1)
-        loss = -(nominator - denominator).mean()
-        return loss
 
     def update_kmeans(self, z1_list, cluster_ids_list, cluster_centers_list):
         z1_list = torch.tensor(z1_list).to(self.device)
@@ -2082,8 +2117,8 @@ class LNE(nn.Module):
     def compute_prototype_NCE(self, z1, cluster_ids):
         loss = 0
         for m in range(len(self.N_km)):  # for each round of kmeans
-            prototypes_sel = self.prototype_list[m][cluster_ids[:, m].detach().cpu().numpy()]
-            concentration_sel = self.concentration_list[m][cluster_ids[:, m].detach().cpu().numpy()]
+            prototypes_sel = self.prototype_list[m][cluster_ids[m]]
+            concentration_sel = self.concentration_list[m][cluster_ids[m]]
             nominator = torch.sum(z1 * prototypes_sel / concentration_sel.view(-1, 1), 1)
             denominator = torch.logsumexp(torch.matmul(z1, torch.transpose(self.prototype_list[m], 0, 1)) /
                                           self.concentration_list[m].view(1, self.N_km[m]), dim=1)
@@ -2091,23 +2126,57 @@ class LNE(nn.Module):
         return loss / (len(self.N_km) * z1.shape[0])
 
     def train_(self, data_loader, test, optimizer, num_epochs):
-        self.eval()
+        self.to(self.device)
+        global_iter = 0
+        monitor_metric_best = 100
 
-        # k-means for z1
-        z1_list = []
-        for data in tqdm(data_loader):
-            image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
-            z1 = self.encoder(image)
-            z1_list.append(z1.view(image.shape[0], -1))
-        z1_list = torch.cat(z1_list).detach().cpu().numpy()
-        print('Finished computing z1 for all training samples!')
+        for epoch in range(num_epochs):
 
-        cluster_ids_list = []
-        cluster_centers_list = []
-        for n_km in self.N_km:
-            kmeans = sklearn.cluster.KMeans(n_clusters=n_km).fit(z1_list)
-            cluster_centers = kmeans.cluster_centers_
-            cluster_ids = kmeans.labels_
-            cluster_ids_list.append(cluster_ids)
-            cluster_centers_list.append(cluster_centers)
-            print('Finished K-means clustering for ', n_km)
+            start_time = time()
+
+            # k-means for z1
+            with torch.no_grad():
+                self.eval()
+                z1_list = []
+                for data in tqdm(data_loader):
+                    image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                    z1 = self.encoder(image)
+                    z1_list.append(z1.view(image.shape[0], -1))
+                z1_list = torch.cat(z1_list).detach().cpu().numpy()
+                print('Finished computing z1 for all training samples!')
+
+                cluster_ids_list = []
+                cluster_centers_list = []
+                for n_km in self.N_km:
+                    kmeans = KMeans(n_clusters=n_km, n_init="auto").fit(z1_list)
+                    cluster_centers = kmeans.cluster_centers_
+                    cluster_ids = kmeans.labels_
+                    cluster_ids_list.append(cluster_ids)
+                    cluster_centers_list.append(cluster_centers)
+                    print('Finished K-means clustering for ', n_km)
+
+            self.update_kmeans(z1_list, cluster_ids_list, cluster_centers_list)
+            self.minimatch_sampling_strategy(cluster_centers_list, cluster_ids_list)
+
+            # training
+            global_iter0 = global_iter
+            for iter, data in tqdm(enumerate(data_loader)):
+                global_iter += 1
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                age = torch.tensor([[a for a in data[3]]], device=self.device).float().squeeze()
+                bs = image.size()[0]
+                idx1 = torch.arange(0, bs - 1)
+                idx2 = idx1 + 1
+
+                img1 = image[idx1]
+                img2 = image[idx2]
+                interval = age[idx2] - age[idx1]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size - 1] for m in range(len(self.N_km))]
+
+                zs, recons = self.forward(img1, img2)
+                adj_mx = self.build_graph_batch(zs)
+                delta_z, delta_h = self.compute_social_pooling_delta_z_batch(zs, interval, adj_mx)
+
+                loss_recon = 0.5 * (self.compute_recon_loss(img1, recons[0]) + self.compute_recon_loss(img2, recons[1]))
+                loss_dir = self.compute_direction_loss(delta_z, delta_h)
+                loss_proto = self.compute_prototype_NCE(zs[0], cluster_ids)
