@@ -2262,7 +2262,6 @@ class LNE(nn.Module):
 
                 tloss += float(loss)
                 nb_batches += 1
-                self.test_recon_loss.append(loss_recon.cpu().detach().numpy())
 
                 tloss += float(loss)
                 nb_batches += 1
