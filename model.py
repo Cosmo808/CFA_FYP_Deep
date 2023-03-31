@@ -1967,7 +1967,7 @@ class LNE(nn.Module):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
-        z = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
+        z = self.fc10(h3.view(h3.size()[0], -1))
         return z
 
     def decoder(self, encoded):
