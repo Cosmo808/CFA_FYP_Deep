@@ -21,7 +21,7 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-fold = 0
+fold = 4
 
 
 if __name__ == '__main__':

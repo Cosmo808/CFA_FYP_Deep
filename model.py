@@ -2217,12 +2217,11 @@ class LNE(nn.Module):
 
         with torch.no_grad():
             z1_list = []
-            for data in tqdm(data_loader):
+            for data in data_loader:
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 z1 = self.encoder(image)
                 z1_list.append(z1.view(image.shape[0], -1))
             z1_list = torch.cat(z1_list).detach().cpu().numpy()
-            print('Finished computing z1 for all training samples!')
 
             cluster_ids_list = []
             cluster_centers_list = []
@@ -2232,13 +2231,12 @@ class LNE(nn.Module):
                 cluster_ids = kmeans.labels_
                 cluster_ids_list.append(cluster_ids)
                 cluster_centers_list.append(cluster_centers)
-                print('Finished K-means clustering for ', n_km)
 
             self.update_kmeans(z1_list, cluster_ids_list, cluster_centers_list)
             self.minimatch_sampling_strategy(cluster_centers_list, cluster_ids_list)
 
             # training
-            for iter, data in tqdm(enumerate(data_loader)):
+            for iter, data in enumerate(data_loader):
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 age = torch.tensor([[a for a in data[3]]], device=self.device).float().squeeze()
                 bs = image.size()[0]
@@ -2248,7 +2246,8 @@ class LNE(nn.Module):
                 img1 = image[idx1]
                 img2 = image[idx2]
                 interval = age[idx2] - age[idx1]
-                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size - 1] for m in range(len(self.N_km))]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in range(len(self.N_km))]
+                cluster_ids = [c[:-1] for c in cluster_ids]
 
                 zs, recons = self.forward(img1, img2)
                 adj_mx = self.build_graph_batch(zs)
