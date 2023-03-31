@@ -2157,7 +2157,7 @@ class LNE(nn.Module):
                     cluster_ids = kmeans.labels_
                     cluster_ids_list.append(cluster_ids)
                     cluster_centers_list.append(cluster_centers)
-                    print('Finished K-means clustering for ', n_km)
+                print('Finished K-means clustering')
 
             self.update_kmeans(z1_list, cluster_ids_list, cluster_centers_list)
             self.minimatch_sampling_strategy(cluster_centers_list, cluster_ids_list)
