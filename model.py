@@ -118,7 +118,7 @@ class AE_starmen(nn.Module):
             nb_batches = 0
 
             s_tp, Z, ZU, ZV = None, None, None, None
-            for data in data_loader:
+            for data in tqdm(data_loader):
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 optimizer.zero_grad()
 
@@ -2088,12 +2088,6 @@ class LNE(nn.Module):
         delta_h_norm = torch.norm(delta_h, dim=1) + 1e-12
         cos = torch.sum(delta_z * delta_h, 1) / (delta_z_norm * delta_h_norm)
         return (1. - cos).mean()
-
-    @staticmethod
-    def compute_distance_loss(delta_z, delta_h):
-        delta_z_norm = torch.norm(delta_z, dim=1) + 1e-12
-        dis = torch.norm(delta_z - delta_h, dim=1)
-        return (dis / delta_z_norm).mean()
 
     def update_kmeans(self, z1_list, cluster_ids_list, cluster_centers_list):
         z1_list = torch.tensor(z1_list).to(self.device)

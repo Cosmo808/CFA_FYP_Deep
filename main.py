@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # hyperparameter
     epochs = 400
     lr = 1e-3
-    batch_size = 128
+    batch_size = 64
 
     # load data
     data_generator = Data_preprocess()
