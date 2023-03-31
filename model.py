@@ -71,7 +71,7 @@ class AE_starmen(nn.Module):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
-        z = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
+        z = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
         return z
 
     def decoder(self, encoded):
@@ -190,8 +190,7 @@ class AE_starmen(nn.Module):
             self.plot_grad_simu_repre(min_, mean_, max_)
             self.plot_loss()
             end_time = time()
-            logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {np.round(end_time - start_time, 3)} seconds\n")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
         print('Complete training')
         return
@@ -620,7 +619,7 @@ class AE_starmen_wCRL(nn.Module):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
-        z = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
+        z = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
         return z
 
     def decoder(self, encoded):
@@ -1107,8 +1106,8 @@ class beta_VAE(nn.Module):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
-        mu = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
-        logVar = self.fc11(h3.flatten(start_dim=1))
+        mu = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
+        logVar = self.fc11(h3.view(h3.size()[0], -1))
         return mu, logVar
 
     def decoder(self, encoded):
@@ -1273,12 +1272,12 @@ class ML_VAE(nn.Module):
         h3 = F.relu(self.bn3(self.conv3(h2)))
 
         # style
-        style_mu = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
-        style_logVar = self.fc11(h3.flatten(start_dim=1))
+        style_mu = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
+        style_logVar = self.fc11(h3.view(h3.size()[0], -1))
 
         # class
-        class_mu = torch.tanh(self.fc12(h3.flatten(start_dim=1)))
-        class_logVar = self.fc13(h3.flatten(start_dim=1))
+        class_mu = torch.tanh(self.fc12(h3.view(h3.size()[0], -1)))
+        class_logVar = self.fc13(h3.view(h3.size()[0], -1))
         return style_mu, style_logVar, class_mu, class_logVar
 
     def decoder(self, encoded):
@@ -1611,8 +1610,8 @@ class rank_VAE(nn.Module):
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
 
-        zs_mu = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
-        zs_logVar = self.fc11(h3.flatten(start_dim=1))
+        zs_mu = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
+        zs_logVar = self.fc11(h3.view(h3.size()[0], -1))
         return zs_mu, zs_logVar
 
     def encoder_zpsi(self, image):
@@ -1620,8 +1619,8 @@ class rank_VAE(nn.Module):
         h2 = F.relu(self.bn5(self.conv5(h1)))
         h3 = F.relu(self.bn6(self.conv6(h2)))
 
-        zpsi_mu = torch.tanh(self.fc20(h3.flatten(start_dim=1)))
-        zpsi_logVar = self.fc21(h3.flatten(start_dim=1))
+        zpsi_mu = torch.tanh(self.fc20(h3.view(h3.size()[0], -1)))
+        zpsi_logVar = self.fc21(h3.view(h3.size()[0], -1))
         return zpsi_mu, zpsi_logVar
 
     def decoder(self, encoded):
@@ -1737,10 +1736,8 @@ class rank_VAE(nn.Module):
             self.plot_simu_repre(min_, mean_, max_)
             self.plot_grad_simu_repre(min_, mean_, max_)
 
-            logger.info(
-                f"Recon / KL / Rank: {reconstruction_loss.cpu().detach().numpy():.3}/{(zs_kl_loss + zpsi_kl_loss).cpu().detach().numpy():.3}/{rank_loss:.3}")
-            logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.1} seconds")
+            logger.info(f"Recon / KL / Rank: {reconstruction_loss:.3}/{zs_kl_loss + zpsi_kl_loss:.3}/{rank_loss:.3}")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.1} seconds")
 
         print('Complete training')
         return
@@ -1970,7 +1967,7 @@ class LNE(nn.Module):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
         h3 = F.relu(self.bn3(self.conv3(h2)))
-        z = torch.tanh(self.fc10(h3.flatten(start_dim=1)))
+        z = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
         return z
 
     def decoder(self, encoded):
@@ -2127,12 +2124,19 @@ class LNE(nn.Module):
 
     def train_(self, data_loader, test, optimizer, num_epochs):
         self.to(self.device)
-        global_iter = 0
-        monitor_metric_best = 100
+        best_loss = 1e10
+        es = 0
 
         for epoch in range(num_epochs):
 
             start_time = time()
+            if es == 100:
+                break
+
+            logger.info('#### Epoch {}/{} ####'.format(epoch + 1, num_epochs))
+
+            tloss = 0.0
+            nb_batches = 0
 
             # k-means for z1
             with torch.no_grad():
@@ -2159,9 +2163,8 @@ class LNE(nn.Module):
             self.minimatch_sampling_strategy(cluster_centers_list, cluster_ids_list)
 
             # training
-            global_iter0 = global_iter
             for iter, data in tqdm(enumerate(data_loader)):
-                global_iter += 1
+                optimizer.zero_grad()
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 age = torch.tensor([[a for a in data[3]]], device=self.device).float().squeeze()
                 bs = image.size()[0]
@@ -2180,3 +2183,89 @@ class LNE(nn.Module):
                 loss_recon = 0.5 * (self.compute_recon_loss(img1, recons[0]) + self.compute_recon_loss(img2, recons[1]))
                 loss_dir = self.compute_direction_loss(delta_z, delta_h)
                 loss_proto = self.compute_prototype_NCE(zs[0], cluster_ids)
+
+                loss = loss_recon + self.lambda_dir * loss_dir + self.lambda_proto * loss_proto
+                loss.backward()
+
+                optimizer.step()
+                tloss += float(loss)
+                nb_batches += 1
+
+            epoch_loss = tloss / nb_batches
+            test_loss = self.evaluate(test)
+            self.train_loss.append(epoch_loss)
+            self.test_loss.append(test_loss)
+
+            if epoch_loss <= best_loss:
+                es = 0
+                best_loss = epoch_loss
+            else:
+                es += 1
+
+            end_time = time()
+            logger.info(f"Recon / Dir / Proto: {loss_recon:.3}/{loss_dir:.3}/{loss_proto:.3}")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+
+    def evaluate(self, data):
+        self.to(self.device)
+        self.training = False
+        self.eval()
+        data_loader = torch.utils.data.DataLoader(data, batch_size=self.batch_size, num_workers=0, shuffle=False, drop_last=False)
+        tloss = 0.0
+        nb_batches = 0
+
+        with torch.no_grad():
+            z1_list = []
+            for data in tqdm(data_loader):
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                z1 = self.encoder(image)
+                z1_list.append(z1.view(image.shape[0], -1))
+            z1_list = torch.cat(z1_list).detach().cpu().numpy()
+            print('Finished computing z1 for all training samples!')
+
+            cluster_ids_list = []
+            cluster_centers_list = []
+            for n_km in self.N_km:
+                kmeans = KMeans(n_clusters=n_km, n_init="auto").fit(z1_list)
+                cluster_centers = kmeans.cluster_centers_
+                cluster_ids = kmeans.labels_
+                cluster_ids_list.append(cluster_ids)
+                cluster_centers_list.append(cluster_centers)
+                print('Finished K-means clustering for ', n_km)
+
+            self.update_kmeans(z1_list, cluster_ids_list, cluster_centers_list)
+            self.minimatch_sampling_strategy(cluster_centers_list, cluster_ids_list)
+
+            # training
+            for iter, data in tqdm(enumerate(data_loader)):
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                age = torch.tensor([[a for a in data[3]]], device=self.device).float().squeeze()
+                bs = image.size()[0]
+                idx1 = torch.arange(0, bs - 1)
+                idx2 = idx1 + 1
+
+                img1 = image[idx1]
+                img2 = image[idx2]
+                interval = age[idx2] - age[idx1]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size - 1] for m in range(len(self.N_km))]
+
+                zs, recons = self.forward(img1, img2)
+                adj_mx = self.build_graph_batch(zs)
+                delta_z, delta_h = self.compute_social_pooling_delta_z_batch(zs, interval, adj_mx)
+
+                loss_recon = 0.5 * (self.compute_recon_loss(img1, recons[0]) + self.compute_recon_loss(img2, recons[1]))
+                loss_dir = self.compute_direction_loss(delta_z, delta_h)
+                loss_proto = self.compute_prototype_NCE(zs[0], cluster_ids)
+
+                loss = loss_recon + self.lambda_dir * loss_dir + self.lambda_proto * loss_proto
+
+                tloss += float(loss)
+                nb_batches += 1
+                self.test_recon_loss.append(loss_recon.cpu().detach().numpy())
+
+                tloss += float(loss)
+                nb_batches += 1
+
+        loss = tloss / nb_batches
+        self.training = True
+        return loss
