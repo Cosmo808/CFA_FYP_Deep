@@ -2142,7 +2142,7 @@ class LNE(nn.Module):
             with torch.no_grad():
                 self.eval()
                 z1_list = []
-                for data in tqdm(data_loader):
+                for data in data_loader:
                     image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                     z1 = self.encoder(image)
                     z1_list.append(z1.view(image.shape[0], -1))
@@ -2174,7 +2174,8 @@ class LNE(nn.Module):
                 img1 = image[idx1]
                 img2 = image[idx2]
                 interval = age[idx2] - age[idx1]
-                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size - 1] for m in range(len(self.N_km))]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in range(len(self.N_km))]
+                cluster_ids = [c[:-1] for c in cluster_ids]
 
                 zs, recons = self.forward(img1, img2)
                 adj_mx = self.build_graph_batch(zs)
