@@ -1977,14 +1977,19 @@ class LNE(nn.Module):
         reconstructed = F.relu(self.upconv3(h8))
         return reconstructed
 
-    def forward(self, img1, img2):
+    def forward(self, img1, img2=None):
         bs = img1.shape[0]
-        zs = self.encoder(torch.cat([img1, img2], 0))
-        recons = self.decoder(zs)
-        zs_flatten = zs.view(bs * 2, -1)
-        z1, z2 = zs_flatten[:bs], zs_flatten[bs:]
-        recon1, recon2 = recons[:bs], recons[bs:]
-        return [z1, z2], [recon1, recon2]
+        if img2 is None:
+            zs = self.encoder(img1)
+            recons = self.decoder(zs)
+            return zs, recons
+        else:
+            zs = self.encoder(torch.cat([img1, img2], 0))
+            recons = self.decoder(zs)
+            zs_flatten = zs.view(bs * 2, -1)
+            z1, z2 = zs_flatten[:bs], zs_flatten[bs:]
+            recon1, recon2 = recons[:bs], recons[bs:]
+            return [z1, z2], [recon1, recon2]
 
     def build_graph_batch(self, zs):
         z1 = zs[0]
