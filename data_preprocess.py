@@ -41,8 +41,8 @@ class Data_preprocess:
         return self.catalog
 
     def generate_XY(self, train_data):
-        N = int(10000 * (1 - self.p))
-        I = int(1000 * (1 - self.p))
+        N = len(train_data.index)
+        I = N // 10
     
         delta_age = train_data['age'] - train_data['baseline_age']
         ones = pd.DataFrame(np.ones(shape=[N, 1]))

@@ -1034,8 +1034,7 @@ class AE_starmen_wCRL(nn.Module):
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
             self.b = torch.matmul(
-                torch.inverse(
-                    (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
+                torch.inverse((self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
                 self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv
             )
 

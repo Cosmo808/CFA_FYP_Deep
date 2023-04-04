@@ -3,6 +3,7 @@ from torch.utils import data
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
 import matplotlib.pyplot as plt
+import pandas as pd
 import scipy.stats as stats
 from sklearn.cross_decomposition import PLSRegression
 from torch.autograd import Variable
@@ -23,22 +24,108 @@ logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+model_class_0 = ['starmen']
+model_class_1 = ['ML_VAE', 'rank_VAE']
+model_class_2 = ['LNE']
+model_class_3 = ['Riem_VAE']
+model_class_4 = ['beta_VAE']
+
+
+def get_reconstruction_loss(input_, model_name):
+    if model_name in model_class_0:
+        reconstructed, z, zu, zv = autoencoder.forward(input_)
+        reconstruction_loss = autoencoder.loss(input_, reconstructed)
+
+    if model_name in model_class_1:
+        zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
+        zu, zv, z = zpsi_encoded, zs_encoded, None
+        encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
+        reconstructed = autoencoder.decoder(encoded)
+        reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
+
+    if model_name in model_class_2:
+        zu, zv = None, None
+        z, reconstructed = autoencoder.forward(input_)
+        reconstruction_loss = autoencoder.compute_recon_loss(input_, reconstructed) * 64 * 64
+
+    if model_name in model_class_4:
+        zu, zv = None, None
+        z, logVar, reconstructed = autoencoder.forward(input_)
+        reconstruction_loss, _ = autoencoder.loss(z, logVar, reconstructed, input_)
+
+    return reconstruction_loss, zu, zv, z
+
+
+def get_pred_loss(image, model_name, missing_num=6):
+    num_subject = image.size()[0] // 10
+    idx0, idx1 = [], []
+    for i in range(num_subject):
+        idx0 += list(np.arange(i * 10, i * 10 + (10 - missing_num)))
+        idx1 += list(np.arange(i * 10 + (10 - missing_num), i * 10 + 10))
+    image0, image1 = image[idx0], image[idx1]
+    input_0 = Variable(image0).to(autoencoder.device)
+    input_1 = Variable(image1).to(autoencoder.device)
+
+    if model_name in model_class_0:
+        # arange data
+        age = pd.DataFrame(data[3].cpu().detach(), columns=['age'])
+        baseline_age = pd.DataFrame(data[2].cpu().detach(), columns=['baseline_age'])
+        data_xy = pd.concat([age, baseline_age], axis=1)
+        # get X and Y
+        X, Y = data_generator.generate_XY(data_xy)
+        X, Y = Variable(X).to(autoencoder.device).float(), Variable(Y).to(autoencoder.device).float()
+        X0, X1 = X[idx0], X[idx1]
+        Y0, Y1 = Y[idx0], Y[idx1]
+        # get z, zu, zv
+        z0 = autoencoder.encoder(input_0)
+        zu0, zv0 = torch.matmul(z0, autoencoder.U), torch.matmul(z0, autoencoder.V)
+        # get b
+        yt = torch.transpose(Y0, 0, 1)
+        yty = torch.matmul(yt, Y0)
+        yt_zv = torch.matmul(yt, zv0)
+        xbeta = torch.matmul(X0, autoencoder.beta)
+        yt_z_xbeta = torch.matmul(yt, z0 - xbeta)
+        b = torch.matmul(
+            torch.inverse((autoencoder.sigma0_2 + autoencoder.sigma2_2) * yty - 2 * autoencoder.sigma0_2
+                          * autoencoder.sigma2_2 * torch.eye(yty.size()[0], device=autoencoder.device)),
+            autoencoder.sigma2_2 * yt_z_xbeta + autoencoder.sigma0_2 * yt_zv
+        )
+        # get z1 and loss
+        z1 = torch.matmul(X1, autoencoder.beta) + torch.matmul(Y1, b)
+        predicted = autoencoder.decoder(z1)
+        return autoencoder.loss(predicted, input_1)
+
+    if model_name in model_class_1 + model_class_4:
+        if model_name in model_class_1:
+            zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_0)
+            zs_encoded = autoencoder.reparametrize(zs_mu, zs_logVar)
+            zpsi_encoded = autoencoder.reparametrize(zpsi_mu, zpsi_logVar)
+            encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
+
+        if model_name in model_class_4:
+            z, logVar, reconstructed = autoencoder.forward(input_0)
+            encoded = autoencoder.reparametrize(z, logVar)
+
+        reconstructed = autoencoder.decoder(encoded)
+        pred_loss, _ = autoencoder.loss(0, 0, reconstructed, input_1)
+        return pred_loss
+
+    return 0.0
+
+
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
     data_generator = Data_preprocess()
-    model_class_0 = ['starmen']
-    model_class_1 = ['ML_VAE', 'rank_VAE']
-    model_class_2 = ['LNE']
-    model_class_3 = ['Riem_VAE']
 
     train_recon, test_recon = [], []
     orthogonality, pls_R2 = [], []
     pearsonr, spearmanr = [], []
+    pred_loss = []
     for fold in range(0, 5):
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'LNE'
+        model_name = 'beta_VAE'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
@@ -70,21 +157,7 @@ if __name__ == '__main__':
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
                 input_ = Variable(image).to(autoencoder.device)
 
-                if model_name in model_class_0:
-                    reconstructed, z, zu, zv = autoencoder.forward(input_)
-                    reconstruction_loss = autoencoder.loss(input_, reconstructed)
-
-                if model_name in model_class_1:
-                    zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
-                    zu, zv = zpsi_encoded, zs_encoded
-                    encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
-                    reconstructed = autoencoder.decoder(encoded)
-                    reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
-
-                if model_name in model_class_2:
-                    z, reconstructed = autoencoder.forward(input_)
-                    reconstruction_loss = autoencoder.compute_recon_loss(input_, reconstructed) * 64 * 64
-
+                reconstruction_loss, zu, zv, z = get_reconstruction_loss(input_, model_name)
                 loss = reconstruction_loss
 
                 # store ZU, ZV
@@ -102,27 +175,16 @@ if __name__ == '__main__':
         # self-recon loss on test dataset
         losses = 0
         batches = 0
+        pred_losses = 0
         with torch.no_grad():
             for data in test_loader:
+                batches += 1
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
                 input_ = Variable(image).to(autoencoder.device)
 
-                if model_name in model_class_0:
-                    reconstructed, z, zu, zv = autoencoder.forward(input_)
-                    reconstruction_loss = autoencoder.loss(input_, reconstructed)
-
-                if model_name in model_class_1:
-                    zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
-                    zu, zv = zpsi_encoded, zs_encoded
-                    encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
-                    reconstructed = autoencoder.decoder(encoded)
-                    reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
-
-                if model_name in model_class_2:
-                    z, reconstructed = autoencoder.forward(input_)
-                    reconstruction_loss = autoencoder.compute_recon_loss(input_, reconstructed) * 64 * 64
-
+                reconstruction_loss, zu, zv, z = get_reconstruction_loss(input_, model_name)
                 loss = reconstruction_loss
+                losses += float(loss)
 
                 # store ZU, ZV
                 if model_name in model_class_0 + model_class_1:
@@ -131,30 +193,18 @@ if __name__ == '__main__':
                     else:
                         ZU = torch.cat((ZU, zu), 0)
                         ZV = torch.cat((ZV, zv), 0)
-                if model_name in model_class_2:
+                if model_name in model_class_2 + model_class_4:
                     if ZU is None:
                         ZU = z
                     else:
                         ZU = torch.cat((ZU, z), 0)
 
                 # predict future data
-                if model_name in model_class_0 + model_class_3:
-                    X, Y = data_generator.generate_XY(test_data)
-                    num_subject = image.size()[0] // 10
-
-                    idx0, idx1 = [], []
-                    for i in range(num_subject):
-                        idx0 += list(np.arange(i * 10, i * 10 + 5))
-                        idx1 += list(np.arange(i * 10 + 5, i * 10 + 10))
-                    image0, image1 = image[idx0], image[idx1]
-                    X0, X1 = X[idx0], X[idx1]
-                    z0 = autoencoder.encoder(image0)
-                    z1 = autoencoder.encoder(image1)
-
-                losses += float(loss)
-                batches += 1
+                prediction_loss = get_pred_loss(image, model_name)
+                pred_losses += float(prediction_loss)
 
         test_recon.append(losses / batches / 64 / 64)
+        pred_loss.append(pred_losses / batches / 64 / 64)
 
         # plot latent space
         # min_, mean_, max_ = autoencoder.plot_z_distribution(ZU, ZV)
@@ -203,3 +253,4 @@ if __name__ == '__main__':
     print('spearmanr: ', np.mean(spearmanr), np.std(spearmanr))
     print('pls_R2: ', np.mean(pls_R2), np.std(pls_R2))
     print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
+    print('future prediction loss: ', np.mean(pred_loss), np.std(pred_loss))
