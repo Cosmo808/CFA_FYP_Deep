@@ -2378,7 +2378,7 @@ class Riem_VAE(nn.Module):
                 longitudinal = self.longitudinal_model(data)
                 alignment_loss = torch.sum((longitudinal - z) ** 2) / z.shape[0]
                 loss = reconstruction_loss + self.beta * kl_loss + self.gamma * alignment_loss
-                self.train_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
+                self.train_recon_loss.append(float(reconstruction_loss))
 
                 # store Z, ZU, ZV
                 subject = torch.tensor([[s for s in data[1]]], device=self.device)
