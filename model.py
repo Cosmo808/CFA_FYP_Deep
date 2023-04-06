@@ -1231,7 +1231,7 @@ class beta_VAE(nn.Module):
             for ax in axe:
                 ax.set_xticks([])
                 ax.set_yticks([])
-        plt.savefig('visualization/beta_VAE_recon.png', bbox_inches='tight')
+        plt.savefig('visualization/reconstruction.png', bbox_inches='tight')
         plt.close()
 
 
@@ -2276,7 +2276,7 @@ class Riem_VAE(nn.Module):
         self.name = 'Riem_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.beta = 5.
-        self.gamma = 1.
+        self.gamma = 0.1
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
@@ -2343,10 +2343,8 @@ class Riem_VAE(nn.Module):
             subject = torch.tensor([[s for s in data[1]]], device=self.device)
             tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
             idx = (subject * 10 + tp).cpu().detach().numpy().squeeze()
-            alpha = torch.tensor([[a.exp() for a in data[6]]]).to(self.device).float()
-            delta = self.X[:, 1].cpu().detach().numpy()
-
-            delta = torch.tensor(delta[idx]).to(self.device).float()
+            alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float()
+            delta = torch.tensor([[a - ba for a, ba in zip(data[3] - data[2])]], device=self.device)
             fixed = torch.mul(alpha, delta).squeeze()
             omega = self.omega[idx]
             for i, f in enumerate(fixed):
@@ -2475,5 +2473,5 @@ class Riem_VAE(nn.Module):
             for ax in axe:
                 ax.set_xticks([])
                 ax.set_yticks([])
-        plt.savefig('visualization/beta_VAE_recon.png', bbox_inches='tight')
+        plt.savefig('visualization/reconstruction.png', bbox_inches='tight')
         plt.close()
