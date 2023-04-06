@@ -2344,7 +2344,7 @@ class Riem_VAE(nn.Module):
             tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
             idx = (subject * 10 + tp).cpu().detach().numpy().squeeze()
             alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float()
-            delta = torch.tensor([[a - ba for a, ba in zip(data[3] - data[2])]], device=self.device)
+            delta = torch.tensor([[a - ba for a, ba in zip(data[3], data[2])]], device=self.device)
             fixed = torch.mul(alpha, delta).squeeze()
             omega = self.omega[idx]
             for i, f in enumerate(fixed):
