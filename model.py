@@ -2266,3 +2266,201 @@ class LNE(nn.Module):
         loss = tloss / nb_batches
         self.training = True
         return loss
+
+
+class Riem_VAE(nn.Module):
+    def __init__(self):
+        super(Riem_VAE, self).__init__()
+        nn.Module.__init__(self)
+        self.name = 'Riem_VAE'
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.beta = 5
+        self.gamma = 100
+
+        self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
+        self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
+        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)  # 32 x 8 x 8
+        self.bn1 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.bn3 = nn.BatchNorm2d(32)
+        self.fc10 = nn.Linear(2048, dim_z)
+        self.fc11 = nn.Linear(2048, dim_z)
+
+        self.fc3 = nn.Linear(dim_z, 512)
+        self.upconv1 = nn.ConvTranspose2d(8, 64, 3, stride=2, padding=1, output_padding=1)  # 64 x 16 x 16
+        self.upconv2 = nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)  # 32 x 32 x 32
+        self.upconv3 = nn.ConvTranspose2d(32, 1, 3, stride=2, padding=1, output_padding=1)  # 1 x 64 x 64
+        self.bn4 = nn.BatchNorm2d(64)
+        self.bn5 = nn.BatchNorm2d(32)
+
+        self.X, self.Y = None, None
+        self.omega = torch.normal(mean=0, std=torch.eye(N), device=self.device)
+        self.sigma = 1.
+
+        self.train_recon_loss, self.test_recon_loss = [], []
+
+    def encoder(self, image):
+        h1 = F.relu(self.bn1(self.conv1(image)))
+        h2 = F.relu(self.bn2(self.conv2(h1)))
+        h3 = F.relu(self.bn3(self.conv3(h2)))
+        mu = torch.tanh(self.fc10(h3.view(h3.size()[0], -1)))
+        logVar = self.fc11(h3.view(h3.size()[0], -1))
+        return mu, logVar
+
+    def decoder(self, encoded):
+        h6 = F.relu(self.fc3(encoded)).reshape([encoded.size()[0], 8, 8, 8])
+        h7 = F.relu(self.bn4(self.upconv1(h6)))
+        h8 = F.relu(self.bn5(self.upconv2(h7)))
+        reconstructed = F.relu(self.upconv3(h8))
+        return reconstructed
+
+    def reparametrize(self, mu, logVar):
+        # Reparameterization takes in the input mu and logVar and sample the mu + std * eps
+        std = torch.exp(logVar / 2).to(self.device)
+        eps = torch.normal(mean=torch.tensor([0 for i in range(std.shape[1])]).float(), std=1).to(self.device)
+        if self.beta != 0:  # beta VAE
+            return mu + eps * std
+        else:  # regular AE
+            return mu
+
+    def forward(self, image):
+        mu, logVar = self.encoder(image)
+        if self.training:
+            encoded = self.reparametrize(mu, logVar)
+        else:
+            encoded = mu
+        reconstructed = self.decoder(encoded)
+        return mu, logVar, reconstructed
+
+    def loss(self, mu, logVar, reconstructed, input_):
+        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
+        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        return recon_error, kl_divergence
+
+    def longitudinal_model(self, data, z):
+        subject = torch.tensor([[s for s in data[1]]], device=self.device)
+        tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
+        idx = subject * 10 + tp
+        alpha = torch.tensor([[tp for tp in data[6]]], device=self.device).pow(2)
+        delta = self.X[:, 1]
+
+        alpha = alpha[idx]
+        delta = delta[idx]
+        fixed = torch.mul(alpha, delta)
+        omega = self.omega[idx]
+        for i, f in enumerate(fixed):
+            omega[i][0] = f
+
+        return torch.sum((omega - z) ** 2) / z.shape[0]
+
+    def train_(self, data_loader, test, optimizer, num_epochs):
+
+        self.to(self.device)
+        best_loss = 1e10
+        es = 0
+
+        for epoch in range(num_epochs):
+
+            start_time = time()
+            if es == 100:
+                break
+
+            logger.info('Epoch {}/{}'.format(epoch + 1, num_epochs))
+
+            tloss = 0.0
+            nb_batches = 0
+
+            s_tp, Z = None, None
+            for data in data_loader:
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                optimizer.zero_grad()
+
+                input_ = Variable(image).to(self.device)
+                z, logVar, reconstructed = self.forward(input_)
+                reconstruction_loss, kl_loss = self.loss(z, logVar, input_, reconstructed)
+                alignment_loss = self.longitudinal_model(data, z)
+                loss = reconstruction_loss + self.beta * kl_loss + self.gamma * alignment_loss
+                self.train_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
+
+                # store Z, ZU, ZV
+                subject = torch.tensor([[s for s in data[1]]], device=self.device)
+                tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
+                st = torch.transpose(torch.cat((subject, tp), 0), 0, 1)
+                if s_tp is None:
+                    s_tp, Z = st, z
+                else:
+                    s_tp = torch.cat((s_tp, st), 0)
+                    Z = torch.cat((Z, z), 0)
+
+                loss.backward()
+                optimizer.step()
+                tloss += float(loss)
+                nb_batches += 1
+
+            # comply with generative model
+            sort_index1 = s_tp[:, 1].sort()[1]
+            sorted_s_tp = s_tp[sort_index1]
+            sort_index2 = sorted_s_tp[:, 0].sort()[1]
+            Z = Z[sort_index1]
+            Z = Z[sort_index2]
+
+            epoch_loss = tloss / nb_batches
+            test_loss = self.evaluate(test)
+
+            if epoch_loss <= best_loss:
+                es = 0
+                best_loss = epoch_loss
+            else:
+                es += 1
+            end_time = time()
+            self.plot_recon(test)
+            logger.info(
+                f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{kl_loss.cpu().detach().numpy():.3e}")
+            logger.info(
+                f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+
+        print('Complete training')
+        return
+
+    def evaluate(self, data):
+        self.to(self.device)
+        self.training = False
+        self.eval()
+        dataloader = torch.utils.data.DataLoader(data, batch_size=128, num_workers=0, shuffle=False, drop_last=False)
+        tloss = 0.0
+        nb_batches = 0
+
+        with torch.no_grad():
+            for data in dataloader:
+                image = torch.tensor([[np.load(path)] for path in data[0]]).float()
+
+                input_ = Variable(image).to(self.device)
+                mu, logVar, reconstructed = self.forward(input_)
+                reconstruction_loss, kl_loss = self.loss(mu, logVar, input_, reconstructed)
+                loss = reconstruction_loss + self.beta * kl_loss
+                self.test_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
+
+                tloss += float(loss)
+                nb_batches += 1
+
+        loss = tloss / nb_batches
+        self.training = True
+        return loss
+
+    def plot_recon(self, data, n_subject=3):
+        # Plot the reconstruction
+        fig, axes = plt.subplots(2 * n_subject, 10, figsize=(20, 4 * n_subject))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for j in range(n_subject):
+            for i in range(10):
+                test_image = torch.tensor(np.load(data[j * 10 + i][0])).resize(1, 1, 64, 64).float()
+                test_image = Variable(test_image).to(self.device)
+                _, _, out = self.forward(test_image)
+                axes[2 * j][i].matshow(255 * test_image[0][0].cpu().detach().numpy())
+                axes[2 * j + 1][i].matshow(255 * out[0][0].cpu().detach().numpy())
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+        plt.savefig('visualization/beta_VAE_recon.png', bbox_inches='tight')
+        plt.close()

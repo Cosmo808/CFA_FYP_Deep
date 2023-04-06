@@ -31,6 +31,17 @@ model_class_3 = ['Riem_VAE']
 model_class_4 = ['beta_VAE']
 
 
+def expand_vector(vec, missing_num, num_subject):
+    t_num = 10 - missing_num
+    error_num = missing_num - t_num
+    for i in range(num_subject):
+        vec = torch.cat((vec[:t_num * (i + 1) + error_num * i],
+                         torch.mean(vec[:t_num * (i + 1) + error_num * i], 0).repeat(error_num, 1),
+                         vec[t_num * (i + 1) + error_num * i:]
+                         ), dim=0)
+    return vec
+
+
 def get_reconstruction_loss(input_, model_name):
     if model_name in model_class_0:
         reconstructed, z, zu, zv = autoencoder.forward(input_)
@@ -98,16 +109,22 @@ def get_pred_loss(image, model_name, missing_num=6):
     if model_name in model_class_1 + model_class_4:
         if model_name in model_class_1:
             zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_0)
+            if missing_num > 5:
+                zs_mu, zs_logVar = expand_vector(zs_mu, missing_num, num_subject), expand_vector(zs_logVar, missing_num, num_subject)
+                zpsi_mu, zpsi_logVar = expand_vector(zpsi_mu, missing_num, num_subject), expand_vector(zpsi_logVar, missing_num, num_subject)
             zs_encoded = autoencoder.reparametrize(zs_mu, zs_logVar)
             zpsi_encoded = autoencoder.reparametrize(zpsi_mu, zpsi_logVar)
             encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
 
         if model_name in model_class_4:
             z, logVar, reconstructed = autoencoder.forward(input_0)
+            if missing_num > 5:
+                z, logVar = expand_vector(z, missing_num, num_subject), expand_vector(logVar, missing_num, num_subject)
             encoded = autoencoder.reparametrize(z, logVar)
 
         reconstructed = autoencoder.decoder(encoded)
-        pred_loss, _ = autoencoder.loss(0, 0, reconstructed, input_1)
+        pred_loss, _ = autoencoder.loss(torch.tensor([0.], device=autoencoder.device),
+                                        torch.tensor([0.], device=autoencoder.device), reconstructed, input_1)
         return pred_loss
 
     return 0.0
@@ -125,7 +142,7 @@ if __name__ == '__main__':
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'beta_VAE'
+        model_name = 'rank_VAE'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False

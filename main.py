@@ -48,9 +48,9 @@ if __name__ == '__main__':
     test_data.requires_grad = False
     Dataset = Dataset_starmen
     train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
-                    train_data['timepoint'], train_data['first_age'])
+                    train_data['timepoint'], train_data['first_age'], train_data['alpha'])
     test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
-                   test_data['timepoint'], test_data['first_age'])
+                   test_data['timepoint'], test_data['first_age'], test_data['alpha'])
 
     train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False,
                                                num_workers=0, drop_last=False, pin_memory=True)

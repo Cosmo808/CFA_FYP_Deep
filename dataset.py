@@ -2,13 +2,14 @@ from torch.utils import data
 
 
 class Dataset_starmen(data.Dataset):
-    def __init__(self, image_path, subject, baseline_age, age, timepoint, first_age):
+    def __init__(self, image_path, subject, baseline_age, age, timepoint, first_age, alpha):
         self.image_path = image_path
         self.subject = subject
         self.baseline_age = baseline_age
         self.age = age
         self.timepoint = timepoint
         self.first_age = first_age
+        self.alpha = alpha
 
     def __len__(self):
         return len(self.image_path)
@@ -22,4 +23,5 @@ class Dataset_starmen(data.Dataset):
         u = self.age[index]
         v = self.timepoint[index]
         w = self.first_age[index]
-        return x, y, z, u, v, w
+        a = self.alpha[index]
+        return x, y, z, u, v, w, a
