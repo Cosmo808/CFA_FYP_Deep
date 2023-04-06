@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # hyperparameter
     epochs = 400
     lr = 1e-3
-    batch_size = 64
+    batch_size = 128
 
     # load data
     data_generator = Data_preprocess()
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = model.LNE()
+    autoencoder = model.Riem_VAE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)

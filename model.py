@@ -190,7 +190,8 @@ class AE_starmen(nn.Module):
             self.plot_grad_simu_repre(min_, mean_, max_)
             self.plot_loss()
             end_time = time()
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(
+                f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
         print('Complete training')
         return
@@ -1034,7 +1035,8 @@ class AE_starmen_wCRL(nn.Module):
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
             self.b = torch.matmul(
-                torch.inverse((self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
+                torch.inverse(
+                    (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
                 self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv
             )
 
@@ -1081,7 +1083,7 @@ class beta_VAE(nn.Module):
         nn.Module.__init__(self)
         self.name = 'beta_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.beta = 5  
+        self.beta = 5
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
@@ -1182,18 +1184,14 @@ class beta_VAE(nn.Module):
             end_time = time()
             self.plot_recon(test)
             logger.info(
-                f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{kl_loss.cpu().detach().numpy():.3e}")
+                f"Recon / KL loss: {reconstruction_loss:.3}/{kl_loss:.3}")
             logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+                f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.2} seconds")
 
         print('Complete training')
         return
 
     def evaluate(self, data):
-        """
-        This is called on a subset of the dataset and returns the encoded latent variables as well as the evaluation
-        loss for this subset.
-        """
         self.to(self.device)
         self.training = False
         self.eval()
@@ -1736,7 +1734,8 @@ class rank_VAE(nn.Module):
             self.plot_grad_simu_repre(min_, mean_, max_)
 
             logger.info(f"Recon / KL / Rank: {reconstruction_loss:.3}/{zs_kl_loss + zpsi_kl_loss:.3}/{rank_loss:.3}")
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.1} seconds")
+            logger.info(
+                f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.1} seconds")
 
         print('Complete training')
         return
@@ -1852,7 +1851,7 @@ class rank_VAE(nn.Module):
             grad_img = simulated_img - template
             template = simulated_img
             axes[idx - 1].matshow(grad_img[0][0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
-                                     norm=matplotlib.colors.CenteredNorm())
+                                  norm=matplotlib.colors.CenteredNorm())
         for axe in axes:
             axe.set_xticks([])
             axe.set_yticks([])
@@ -2020,7 +2019,7 @@ class LNE(nn.Module):
             for j in range(ds):
                 dis_mx[i, j] = torch.sum((z1[i] - z1_all[j]) ** 2)
         # sigma = (torch.sort(dis_mx)[0][:, -1])**0.5 - (torch.sort(dis_mx)[0][:, 1])**0.5
-        adj_mx = torch.exp(-dis_mx/100)
+        adj_mx = torch.exp(-dis_mx / 100)
         # adj_mx = torch.exp(-dis_mx / (2*sigma**2))
         if self.num_nb < bs:
             adj_mx_filter = torch.zeros(bs, ds).to(self.device)
@@ -2034,8 +2033,8 @@ class LNE(nn.Module):
     @staticmethod
     def compute_social_pooling_delta_z_batch(zs, interval, adj_mx):
         z1, z2 = zs[0], zs[1]
-        delta_z = (z2 - z1) / interval.unsqueeze(1)      # [bs, ls]
-        delta_h = torch.matmul(adj_mx, delta_z) / adj_mx.sum(1, keepdim=True)    # [bs, ls]
+        delta_z = (z2 - z1) / interval.unsqueeze(1)  # [bs, ls]
+        delta_h = torch.matmul(adj_mx, delta_z) / adj_mx.sum(1, keepdim=True)  # [bs, ls]
         return delta_z, delta_h
 
     @staticmethod
@@ -2056,18 +2055,19 @@ class LNE(nn.Module):
             n_km = cluster_centers.shape[0]
             cluster_dis_ids = np.zeros((n_km, n_km))
             for i in range(n_km):
-                dis_cn = np.sqrt(np.sum((cluster_centers[i].reshape(1,-1) - cluster_centers)**2, 1))
+                dis_cn = np.sqrt(np.sum((cluster_centers[i].reshape(1, -1) - cluster_centers) ** 2, 1))
                 cluster_dis_ids[i] = np.argsort(dis_cn)
             cluster_dis_ids_list.append(cluster_dis_ids)
 
         n_batch = np.ceil(I / self.batch_size).astype(int)
         sample_idx_list = []
         for nb in range(n_batch):
-            m_idx = np.random.choice(len(cluster_centers_list))         # select round of kmeans
+            m_idx = np.random.choice(len(cluster_centers_list))  # select round of kmeans
             c_idx = np.random.choice(cluster_centers_list[m_idx].shape[0])  # select a cluster
             sample_idx_batch = []
             n_s_b = 0
-            for c_idx_sel in cluster_dis_ids_list[m_idx][c_idx]:        # get nbr clusters given distance to selected cluster c_idx
+            for c_idx_sel in cluster_dis_ids_list[m_idx][
+                c_idx]:  # get nbr clusters given distance to selected cluster c_idx
                 sample_idx = np.where(cluster_ids_list[m_idx] == c_idx_sel)[0]
                 if n_s_b + sample_idx.shape[0] >= self.batch_size:
                     sample_idx_batch.append(np.random.choice(sample_idx, self.batch_size - n_s_b, replace=False))
@@ -2172,7 +2172,8 @@ class LNE(nn.Module):
                 img1 = image[idx1]
                 img2 = image[idx2]
                 interval = age[idx2] - age[idx1]
-                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in range(len(self.N_km))]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in
+                               range(len(self.N_km))]
                 cluster_ids = [c[:-1] for c in cluster_ids]
 
                 zs, recons = self.forward(img1, img2)
@@ -2203,13 +2204,15 @@ class LNE(nn.Module):
 
             end_time = time()
             logger.info(f"Recon / Dir / Proto: {loss_recon:.3}/{loss_dir:.3}/{loss_proto:.3}")
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(
+                f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
     def evaluate(self, data):
         self.to(self.device)
         self.training = False
         self.eval()
-        data_loader = torch.utils.data.DataLoader(data, batch_size=self.batch_size, num_workers=0, shuffle=False, drop_last=False)
+        data_loader = torch.utils.data.DataLoader(data, batch_size=self.batch_size, num_workers=0, shuffle=False,
+                                                  drop_last=False)
         tloss = 0.0
         nb_batches = 0
 
@@ -2244,7 +2247,8 @@ class LNE(nn.Module):
                 img1 = image[idx1]
                 img2 = image[idx2]
                 interval = age[idx2] - age[idx1]
-                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in range(len(self.N_km))]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in
+                               range(len(self.N_km))]
                 cluster_ids = [c[:-1] for c in cluster_ids]
 
                 zs, recons = self.forward(img1, img2)
@@ -2260,9 +2264,6 @@ class LNE(nn.Module):
                 tloss += float(loss)
                 nb_batches += 1
 
-                tloss += float(loss)
-                nb_batches += 1
-
         loss = tloss / nb_batches
         self.training = True
         return loss
@@ -2274,8 +2275,8 @@ class Riem_VAE(nn.Module):
         nn.Module.__init__(self)
         self.name = 'Riem_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.beta = 5
-        self.gamma = 100
+        self.beta = 5.
+        self.gamma = 1.
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
@@ -2294,8 +2295,8 @@ class Riem_VAE(nn.Module):
         self.bn5 = nn.BatchNorm2d(32)
 
         self.X, self.Y = None, None
-        self.omega = torch.normal(mean=0, std=torch.eye(N), device=self.device)
-        self.sigma = 1.
+        self.omega = torch.normal(mean=0., std=1., size=[N, dim_z], device=self.device).float()
+        self.sigma_2 = 0.5
 
         self.train_recon_loss, self.test_recon_loss = [], []
 
@@ -2337,24 +2338,22 @@ class Riem_VAE(nn.Module):
         recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_error, kl_divergence
 
-    def longitudinal_model(self, data, z):
-        subject = torch.tensor([[s for s in data[1]]], device=self.device)
-        tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
-        idx = subject * 10 + tp
-        alpha = torch.tensor([[tp for tp in data[6]]], device=self.device).pow(2)
-        delta = self.X[:, 1]
+    def longitudinal_model(self, data):
+        with torch.no_grad():
+            subject = torch.tensor([[s for s in data[1]]], device=self.device)
+            tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
+            idx = (subject * 10 + tp).cpu().detach().numpy().squeeze()
+            alpha = torch.tensor([[a.exp() for a in data[6]]]).to(self.device).float()
+            delta = self.X[:, 1].cpu().detach().numpy()
 
-        alpha = alpha[idx]
-        delta = delta[idx]
-        fixed = torch.mul(alpha, delta)
-        omega = self.omega[idx]
-        for i, f in enumerate(fixed):
-            omega[i][0] = f
-
-        return torch.sum((omega - z) ** 2) / z.shape[0]
+            delta = torch.tensor(delta[idx]).to(self.device).float()
+            fixed = torch.mul(alpha, delta).squeeze()
+            omega = self.omega[idx]
+            for i, f in enumerate(fixed):
+                omega[i][0] = f
+            return omega
 
     def train_(self, data_loader, test, optimizer, num_epochs):
-
         self.to(self.device)
         best_loss = 1e10
         es = 0
@@ -2370,15 +2369,16 @@ class Riem_VAE(nn.Module):
             tloss = 0.0
             nb_batches = 0
 
-            s_tp, Z = None, None
+            s_tp, Z, alpha = None, None, None
             for data in data_loader:
-                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 optimizer.zero_grad()
-
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 input_ = Variable(image).to(self.device)
+
                 z, logVar, reconstructed = self.forward(input_)
                 reconstruction_loss, kl_loss = self.loss(z, logVar, input_, reconstructed)
-                alignment_loss = self.longitudinal_model(data, z)
+                longitudinal = self.longitudinal_model(data)
+                alignment_loss = torch.sum((longitudinal - z) ** 2) / z.shape[0]
                 loss = reconstruction_loss + self.beta * kl_loss + self.gamma * alignment_loss
                 self.train_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
 
@@ -2386,11 +2386,13 @@ class Riem_VAE(nn.Module):
                 subject = torch.tensor([[s for s in data[1]]], device=self.device)
                 tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
                 st = torch.transpose(torch.cat((subject, tp), 0), 0, 1)
+                a = torch.transpose(torch.tensor([[a.exp() for a in data[6]]]).to(self.device).float(), 0, 1)
                 if s_tp is None:
-                    s_tp, Z = st, z
+                    s_tp, Z, alpha = st, z, a
                 else:
                     s_tp = torch.cat((s_tp, st), 0)
                     Z = torch.cat((Z, z), 0)
+                    alpha = torch.cat((alpha, a), 0)
 
                 loss.backward()
                 optimizer.step()
@@ -2401,8 +2403,9 @@ class Riem_VAE(nn.Module):
             sort_index1 = s_tp[:, 1].sort()[1]
             sorted_s_tp = s_tp[sort_index1]
             sort_index2 = sorted_s_tp[:, 0].sort()[1]
-            Z = Z[sort_index1]
-            Z = Z[sort_index2]
+            Z, alpha = Z[sort_index1], alpha[sort_index1]
+            Z, alpha = Z[sort_index2], alpha[sort_index2]
+            self.update_omega(Z, alpha)
 
             epoch_loss = tloss / nb_batches
             test_loss = self.evaluate(test)
@@ -2415,9 +2418,9 @@ class Riem_VAE(nn.Module):
             end_time = time()
             self.plot_recon(test)
             logger.info(
-                f"Recon / KL loss: {reconstruction_loss.cpu().detach().numpy():.3e}/{kl_loss.cpu().detach().numpy():.3e}")
+                f"Recon / KL loss / Align: {reconstruction_loss:.3}/{kl_loss:.3}/{alignment_loss:.3}")
             logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.3e}/{test_loss:.3e} took {end_time - start_time} seconds")
+                f"Epoch loss (train/test): {epoch_loss:.3}/{test_loss:.3} took {end_time - start_time:.2} seconds")
 
         print('Complete training')
         return
@@ -2432,11 +2435,13 @@ class Riem_VAE(nn.Module):
 
         with torch.no_grad():
             for data in dataloader:
-                image = torch.tensor([[np.load(path)] for path in data[0]]).float()
-
+                image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
                 input_ = Variable(image).to(self.device)
-                mu, logVar, reconstructed = self.forward(input_)
-                reconstruction_loss, kl_loss = self.loss(mu, logVar, input_, reconstructed)
+
+                z, logVar, reconstructed = self.forward(input_)
+                reconstruction_loss, kl_loss = self.loss(z, logVar, input_, reconstructed)
+                # longitudinal = self.longitudinal_model(data)
+                # alignment_loss = torch.sum((longitudinal - z) ** 2) / z.shape[0]
                 loss = reconstruction_loss + self.beta * kl_loss
                 self.test_recon_loss.append(reconstruction_loss.cpu().detach().numpy())
 
@@ -2446,6 +2451,14 @@ class Riem_VAE(nn.Module):
         loss = tloss / nb_batches
         self.training = True
         return loss
+
+    def update_omega(self, Z, alpha):
+        delta = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
+        fixed = torch.mul(delta, alpha)
+        fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
+        for i in range(5):
+            self.omega = 1 / (1 - self.sigma_2) * (Z - fixed)
+            self.sigma_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - fixed - self.omega, p='fro'), 2)
 
     def plot_recon(self, data, n_subject=3):
         # Plot the reconstruction
