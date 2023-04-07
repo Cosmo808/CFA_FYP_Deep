@@ -2277,7 +2277,7 @@ class Riem_VAE(nn.Module):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.fold = None
         self.beta = 5.
-        self.gamma = 0.1
+        self.gamma = 5.
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
@@ -2351,7 +2351,7 @@ class Riem_VAE(nn.Module):
 
             alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float()
             delta = torch.tensor([[a - ba for a, ba in zip(data[3], data[2])]], device=self.device)
-            fixed = torch.mul(alpha, delta).squeeze()
+            fixed = F.tanh(torch.mul(alpha, delta).squeeze())
             omega = self.omega[idx]
             for i, f in enumerate(fixed):
                 omega[i][0] = f
@@ -2458,7 +2458,7 @@ class Riem_VAE(nn.Module):
 
     def update_omega(self, Z, alpha):
         delta = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
-        fixed = torch.mul(delta, alpha)
+        fixed = F.tanh(torch.mul(delta, alpha))
         fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
         for i in range(5):
             self.omega = 1 / (1 - self.sigma_2) * (Z - fixed)
