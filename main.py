@@ -64,6 +64,8 @@ if __name__ == '__main__':
         autoencoder.X, autoencoder.Y = X, Y
     if hasattr(autoencoder, 'batch_size'):
         autoencoder.batch_size = batch_size
+    if hasattr(autoencoder, 'fold'):
+        autoencoder.fold = fold
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam
