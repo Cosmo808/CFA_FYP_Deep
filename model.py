@@ -2351,7 +2351,7 @@ class Riem_VAE(nn.Module):
 
             alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float()
             delta = torch.tensor([[a - ba for a, ba in zip(data[3], data[2])]], device=self.device)
-            fixed = F.tanh(torch.mul(alpha, delta).squeeze())
+            fixed = torch.tanh(torch.mul(alpha, delta).squeeze())
             omega = self.omega[idx]
             for i, f in enumerate(fixed):
                 omega[i][0] = f
@@ -2458,7 +2458,7 @@ class Riem_VAE(nn.Module):
 
     def update_omega(self, Z, alpha):
         delta = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
-        fixed = F.tanh(torch.mul(delta, alpha))
+        fixed = torch.tanh(torch.mul(delta, alpha))
         fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
         for i in range(5):
             self.omega = 1 / (1 - self.sigma_2) * (Z - fixed)
