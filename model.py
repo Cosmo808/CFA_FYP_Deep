@@ -67,6 +67,15 @@ class AE_starmen(nn.Module):
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1, 0.5, 1
         self.D = torch.eye(q * I, device=self.device).float()
 
+    def update_device(self):
+        self.beta.to(self.device)
+        self.b.to(self.device)
+        self.U.to(self.device)
+        self.V.to(self.device)
+        self.D.to(self.device)
+        self.X.to(self.device)
+        self.Y.to(self.device)
+
     def encoder(self, image):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
@@ -101,7 +110,7 @@ class AE_starmen(nn.Module):
         return recon_loss
 
     def train_(self, data_loader, test, optimizer, num_epochs):
-
+        self.update_device()
         self.to(self.device)
         best_loss = 1e10
         es = 0
@@ -2274,7 +2283,7 @@ class Riem_VAE(nn.Module):
         super(Riem_VAE, self).__init__()
         nn.Module.__init__(self)
         self.name = 'Riem_VAE'
-        self.device = None
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.fold = None
         self.beta = 5.
         self.gamma = 5.
@@ -2300,6 +2309,9 @@ class Riem_VAE(nn.Module):
         self.sigma_2 = 0.5
 
         self.train_recon_loss, self.test_recon_loss = [], []
+
+    def update_device(self):
+        self.omega.to(self.device)
 
     def encoder(self, image):
         h1 = F.relu(self.bn1(self.conv1(image)))
@@ -2359,6 +2371,7 @@ class Riem_VAE(nn.Module):
 
     def train_(self, data_loader, test, optimizer, num_epochs):
         self.to(self.device)
+        self.update_device()
         best_loss = 1e10
         es = 0
 
