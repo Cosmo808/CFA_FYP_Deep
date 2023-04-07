@@ -2274,7 +2274,7 @@ class Riem_VAE(nn.Module):
         super(Riem_VAE, self).__init__()
         nn.Module.__init__(self)
         self.name = 'Riem_VAE'
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = None
         self.fold = None
         self.beta = 5.
         self.gamma = 5.
