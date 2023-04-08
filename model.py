@@ -2310,9 +2310,6 @@ class Riem_VAE(nn.Module):
 
         self.train_recon_loss, self.test_recon_loss = [], []
 
-    def update_device(self):
-        self.omega.to(self.device)
-
     def encoder(self, image):
         h1 = F.relu(self.bn1(self.conv1(image)))
         h2 = F.relu(self.bn2(self.conv2(h1)))
@@ -2371,7 +2368,6 @@ class Riem_VAE(nn.Module):
 
     def train_(self, data_loader, test, optimizer, num_epochs):
         self.to(self.device)
-        self.update_device()
         best_loss = 1e10
         es = 0
 
@@ -2394,7 +2390,7 @@ class Riem_VAE(nn.Module):
 
                 z, logVar, reconstructed = self.forward(input_)
                 reconstruction_loss, kl_loss = self.loss(z, logVar, input_, reconstructed)
-                longitudinal = self.longitudinal_model(data)
+                longitudinal = self.longitudinal_model(data).to(self.device)
                 alignment_loss = torch.sum((longitudinal - z) ** 2) / z.shape[0]
                 loss = reconstruction_loss + self.beta * kl_loss + self.gamma * alignment_loss
                 self.train_recon_loss.append(float(reconstruction_loss))
