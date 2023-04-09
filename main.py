@@ -26,11 +26,13 @@ parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
 input_para = parser.parse_args()
 
+device = torch.device(f"cuda:{input_para.cuda}")
+fold = input_para.fold
+
+
 if __name__ == '__main__':
-    device = torch.device('cuda')
-    torch.cuda.set_device(input_para.cuda)
-    logger.info(f"Device is cuda:{input_para.cuda}")
-    logger.info(f"##### Fold {input_para.fold + 1}/5 #####\n")
+    logger.info(f"Device is {device}")
+    logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
     # make directory
     if not os.path.exists('model'):
@@ -39,13 +41,13 @@ if __name__ == '__main__':
         os.mkdir('visualization')
 
     # hyperparameter
-    epochs = 400
+    epochs = 300
     lr = 1e-3
     batch_size = 128
 
     # load data
     data_generator = Data_preprocess()
-    train_data, test_data = data_generator.generate_train_test(input_para.fold)
+    train_data, test_data = data_generator.generate_train_test(fold)
     logger.info(f"Loaded {len(train_data['path']) + len(test_data['path'])} scans")
 
     train_data.requires_grad = False
@@ -69,12 +71,12 @@ if __name__ == '__main__':
     if hasattr(autoencoder, 'batch_size'):
         autoencoder.batch_size = batch_size
     if hasattr(autoencoder, 'fold'):
-        autoencoder.fold = input_para.fold
+        autoencoder.fold = fold
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
-    torch.save(autoencoder, 'model/{}_fold_{}'.format(input_para.fold, autoencoder.name))
-    logger.info(f"##### Fold {input_para.fold + 1}/5 finished #####\n")
-    logger.info("Model saved in model/{}_fold_{}".format(input_para.fold, autoencoder.name))
+    torch.save(autoencoder, 'model/{}_fold_{}'.format(fold, autoencoder.name))
+    logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
+    logger.info("Model saved in model/{}_fold_{}".format(fold, autoencoder.name))
