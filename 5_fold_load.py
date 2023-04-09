@@ -113,16 +113,16 @@ def get_pred_loss(image, model_name, missing_num=6):
             # get z
             z0, _ = autoencoder.encoder(input_0)
             # get alpha
-            alpha = torch.tensor([[a.exp() for a in data[6]]], device=autoencoder.device).float().view(z0.size()[0], -1)
+            alpha = torch.tensor([[a.exp() for a in data[6]]], device=autoencoder.device).float().view(len(idx0) + len(idx1), -1)
             alpha0, alpha1 = alpha[idx0], alpha[idx1]
             # get delta age
-            delta_age0 = torch.tensor(X0[:, 1]).to(autoencoder.device).float().view(alpha.size())
-            delta_age1 = torch.tensor(X1[:, 1]).to(autoencoder.device).float().view(alpha.size())
+            delta_age0 = X0[:, 1].clone().detach().to(autoencoder.device).float().view(alpha0.size())
+            delta_age1 = X1[:, 1].clone().detach().to(autoencoder.device).float().view(alpha1.size())
             # calculate fixed
             fixed0 = torch.tanh(torch.mul(delta_age0, alpha0))
             fixed1 = torch.tanh(torch.mul(delta_age1, alpha1))
-            fixed0 = torch.cat((fixed0, torch.zeros([z0.size()[0], z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
-            fixed1 = torch.cat((fixed1, torch.zeros([z0.size()[0], z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
+            fixed0 = torch.cat((fixed0, torch.zeros([len(idx0), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
+            fixed1 = torch.cat((fixed1, torch.zeros([len(idx1), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
             # calculate random
             Y0 = (Y0[:, ::2]).to(autoencoder.device).float()
             Y1 = (Y1[:, ::2]).to(autoencoder.device).float()
@@ -132,7 +132,10 @@ def get_pred_loss(image, model_name, missing_num=6):
             )
             # get z1
             z1 = fixed1 + torch.matmul(Y1, omega)
-
+            longitudinal = fixed0 + torch.matmul(Y0, omega)
+            print(z0[:3])
+            print(longitudinal[:3])
+            exit()
         predicted = autoencoder.decoder(z1)
         return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
 
@@ -279,6 +282,8 @@ if __name__ == '__main__':
                 PCA_ZU = -1 * torch.matmul(ZU, V[:, 0]).cpu().detach().numpy()
             else:
                 PCA_ZU = ZU.cpu().detach().numpy().squeeze()
+            if model_name == 'Riem_VAE':
+                PCA_ZU = ZU[:, 0].cpu().detach().numpy().squeeze()
             # get psi
             if ZU.size()[0] == 10000:
                 psi = all_data['alpha'] * (all_data['age'] - all_data['baseline_age'])

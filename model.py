@@ -2359,12 +2359,12 @@ class Riem_VAE(nn.Module):
                     idx[i] -= 2000
             # fixed part
             alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float().view(bs, -1)
-            delta_age = torch.tensor(self.X[:, 1]).to(self.device).float().view(N, -1)
+            delta_age = self.X[:, 1].clone().detach().to(self.device).float().view(N, -1)
             delta_age = delta_age[idx].view(bs, -1)
-            fixed = torch.tanh(torch.mul(delta_age, alpha)).view(bs, -1)
+            fixed = torch.tanh(torch.mul(delta_age, alpha)).view(bs, -1) / 50
             fixed = torch.cat((fixed, torch.zeros([alpha.size()[0], dim_z - 1]).to(self.device).float()), dim=1)
             # random part
-            Y = (self.Y[:, ::2]).to(self.device).float()
+            Y = self.Y[:, ::2].to(self.device).float()
             omega = torch.matmul(Y, self.omega)
             omega = omega[idx]
 
@@ -2470,10 +2470,10 @@ class Riem_VAE(nn.Module):
         return loss
 
     def update_omega(self, Z, alpha):
-        delta_age = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
-        fixed = torch.tanh(torch.mul(delta_age, alpha))
+        delta_age = self.X[:, 1].clone().detach().to(self.device).float().view(alpha.size())
+        fixed = torch.mul(delta_age, alpha) / 50
         fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
-        Y = (self.Y[:, ::2]).to(self.device).float()
+        Y = self.Y[:, ::2].to(self.device).float()
         self.omega = torch.matmul(
             torch.inverse(torch.matmul(torch.transpose(Y, 0, 1), Y) + torch.eye(Y.size()[1], device=self.device)),
             torch.matmul(torch.transpose(Y, 0, 1), Z - fixed)
