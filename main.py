@@ -27,9 +27,9 @@ parser.add_argument('--fold', type=int, default=0)
 input_para = parser.parse_args()
 
 if __name__ == '__main__':
-    device = torch.device(f'cuda:{input_para.cuda}')
+    device = torch.device('cuda')
     torch.cuda.set_device(input_para.cuda)
-    logger.info(f"Device is {device}")
+    logger.info(f"Device is cuda:{input_para.cuda}")
     logger.info(f"##### Fold {input_para.fold + 1}/5 #####\n")
 
     # make directory
