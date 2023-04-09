@@ -24,11 +24,15 @@ logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model_class_0 = ['starmen']
-model_class_1 = ['ML_VAE', 'rank_VAE']
-model_class_2 = ['LNE']
-model_class_3 = ['Riem_VAE']
-model_class_4 = ['beta_VAE']
+# recon class
+ae_disen_recon_class = ['starmen']
+vae_disen_recon_class = ['ML_VAE', 'rank_VAE']
+vae_no_disen_recon_class = ['beta_VAE', 'Riem_VAE']
+model_class = ['LNE']
+
+# pred class
+vae_pred_class = ['ML_VAE', 'rank_VAE', 'beta_VAE']
+align_pred_class = ['starmen', 'Riem_VAE']
 
 
 def expand_vector(vec, missing_num, num_subject):
@@ -42,24 +46,24 @@ def expand_vector(vec, missing_num, num_subject):
     return vec
 
 
-def get_reconstruction_loss(input_, model_name):
-    if model_name in model_class_0:
+def get_reconstruction(input_, model_name):
+    if model_name in ae_disen_recon_class:
         reconstructed, z, zu, zv = autoencoder.forward(input_)
         reconstruction_loss = autoencoder.loss(input_, reconstructed)
 
-    if model_name in model_class_1:
+    if model_name in vae_disen_recon_class:
         zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_)
         zu, zv, z = zpsi_encoded, zs_encoded, None
         encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
         reconstructed = autoencoder.decoder(encoded)
         reconstruction_loss, zs_kl_loss = autoencoder.loss(zs_mu, zs_logVar, input_, reconstructed)
 
-    if model_name in model_class_2:
+    if model_name in model_class:
         zu, zv = None, None
         z, reconstructed = autoencoder.forward(input_)
         reconstruction_loss = autoencoder.compute_recon_loss(input_, reconstructed) * 64 * 64
 
-    if model_name in model_class_4:
+    if model_name in vae_no_disen_recon_class:
         zu, zv = None, None
         z, logVar, reconstructed = autoencoder.forward(input_)
         reconstruction_loss, _ = autoencoder.loss(z, logVar, reconstructed, input_)
@@ -77,7 +81,7 @@ def get_pred_loss(image, model_name, missing_num=6):
     input_0 = Variable(image0).to(autoencoder.device)
     input_1 = Variable(image1).to(autoencoder.device)
 
-    if model_name in model_class_0:
+    if model_name in align_pred_class:
         # arange data
         age = pd.DataFrame(data[3].cpu().detach(), columns=['age'])
         baseline_age = pd.DataFrame(data[2].cpu().detach(), columns=['baseline_age'])
@@ -87,27 +91,30 @@ def get_pred_loss(image, model_name, missing_num=6):
         X, Y = Variable(X).to(autoencoder.device).float(), Variable(Y).to(autoencoder.device).float()
         X0, X1 = X[idx0], X[idx1]
         Y0, Y1 = Y[idx0], Y[idx1]
-        # get z, zu, zv
-        z0 = autoencoder.encoder(input_0)
-        zu0, zv0 = torch.matmul(z0, autoencoder.U), torch.matmul(z0, autoencoder.V)
-        # get b
-        yt = torch.transpose(Y0, 0, 1)
-        yty = torch.matmul(yt, Y0)
-        yt_zv = torch.matmul(yt, zv0)
-        xbeta = torch.matmul(X0, autoencoder.beta)
-        yt_z_xbeta = torch.matmul(yt, z0 - xbeta)
-        b = torch.matmul(
-            torch.inverse((autoencoder.sigma0_2 + autoencoder.sigma2_2) * yty - 2 * autoencoder.sigma0_2
-                          * autoencoder.sigma2_2 * torch.eye(yty.size()[0], device=autoencoder.device)),
-            autoencoder.sigma2_2 * yt_z_xbeta + autoencoder.sigma0_2 * yt_zv
-        )
-        # get z1 and loss
-        z1 = torch.matmul(X1, autoencoder.beta) + torch.matmul(Y1, b)
-        predicted = autoencoder.decoder(z1)
+        if model_name == 'starmen':
+            # get z, zu, zv
+            z0 = autoencoder.encoder(input_0)
+            zu0, zv0 = torch.matmul(z0, autoencoder.U), torch.matmul(z0, autoencoder.V)
+            # get b
+            yt = torch.transpose(Y0, 0, 1)
+            yty = torch.matmul(yt, Y0)
+            yt_zv = torch.matmul(yt, zv0)
+            xbeta = torch.matmul(X0, autoencoder.beta)
+            yt_z_xbeta = torch.matmul(yt, z0 - xbeta)
+            b = torch.matmul(
+                torch.inverse((autoencoder.sigma0_2 + autoencoder.sigma2_2) * yty - 2 * autoencoder.sigma0_2
+                              * autoencoder.sigma2_2 * torch.eye(yty.size()[0], device=autoencoder.device)),
+                autoencoder.sigma2_2 * yt_z_xbeta + autoencoder.sigma0_2 * yt_zv
+            )
+            # get z1 and loss
+            z1 = torch.matmul(X1, autoencoder.beta) + torch.matmul(Y1, b)
+            predicted = autoencoder.decoder(z1)
+        if model_name == 'Riem_VAE':
+            
         return autoencoder.loss(predicted, input_1)
 
-    if model_name in model_class_1 + model_class_4:
-        if model_name in model_class_1:
+    if model_name in vae_pred_class:
+        if model_name in vae_disen_recon_class:
             zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_0)
             if missing_num > 5:
                 zs_mu, zs_logVar = expand_vector(zs_mu, missing_num, num_subject), expand_vector(zs_logVar, missing_num, num_subject)
@@ -116,7 +123,7 @@ def get_pred_loss(image, model_name, missing_num=6):
             zpsi_encoded = autoencoder.reparametrize(zpsi_mu, zpsi_logVar)
             encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
 
-        if model_name in model_class_4:
+        if model_name in vae_no_disen_recon_class:
             z, logVar, reconstructed = autoencoder.forward(input_0)
             if missing_num > 5:
                 z, logVar = expand_vector(z, missing_num, num_subject), expand_vector(logVar, missing_num, num_subject)
@@ -142,7 +149,7 @@ if __name__ == '__main__':
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'rank_VAE'
+        model_name = 'Riem_VAE'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
@@ -156,9 +163,9 @@ if __name__ == '__main__':
 
         Dataset = Dataset_starmen
         train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
-                        train_data['timepoint'], train_data['first_age'])
+                        train_data['timepoint'], train_data['first_age'], train_data['alpha'])
         test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
-                       test_data['timepoint'], test_data['first_age'])
+                       test_data['timepoint'], test_data['first_age'], test_data['alpha'])
 
         train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=False,
                                                    num_workers=0, drop_last=False, pin_memory=True)
@@ -174,7 +181,7 @@ if __name__ == '__main__':
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
                 input_ = Variable(image).to(autoencoder.device)
 
-                reconstruction_loss, zu, zv, z = get_reconstruction_loss(input_, model_name)
+                reconstruction_loss, zu, zv, z = get_reconstruction(input_, model_name)
                 loss = reconstruction_loss
 
                 # store ZU, ZV
@@ -199,18 +206,18 @@ if __name__ == '__main__':
                 image = torch.tensor([[np.load(path)] for path in data[0]], device=autoencoder.device).float()
                 input_ = Variable(image).to(autoencoder.device)
 
-                reconstruction_loss, zu, zv, z = get_reconstruction_loss(input_, model_name)
+                reconstruction_loss, zu, zv, z = get_reconstruction(input_, model_name)
                 loss = reconstruction_loss
                 losses += float(loss)
 
                 # store ZU, ZV
-                if model_name in model_class_0 + model_class_1:
+                if model_name in ae_disen_recon_class + vae_disen_recon_class:
                     if ZU is None:
                         ZU, ZV = zu, zv
                     else:
                         ZU = torch.cat((ZU, zu), 0)
                         ZV = torch.cat((ZV, zv), 0)
-                if model_name in model_class_2 + model_class_4:
+                if model_name in model_class + vae_no_disen_recon_class:
                     if ZU is None:
                         ZU = z
                     else:

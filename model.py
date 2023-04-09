@@ -2285,8 +2285,8 @@ class Riem_VAE(nn.Module):
         self.name = 'Riem_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.fold = None
-        self.beta = 5.
-        self.gamma = 5.
+        self.beta = 2.
+        self.gamma = 3.
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
@@ -2305,7 +2305,7 @@ class Riem_VAE(nn.Module):
         self.bn5 = nn.BatchNorm2d(32)
 
         self.X, self.Y = None, None
-        self.omega = torch.normal(mean=0., std=1., size=[N, dim_z], device=self.device).float()
+        self.omega = torch.normal(mean=0., std=1., size=[I, dim_z], device=self.device).float()
         self.sigma_2 = 0.5
 
         self.train_recon_loss, self.test_recon_loss = [], []
@@ -2353,18 +2353,22 @@ class Riem_VAE(nn.Module):
             subject = torch.tensor([[s for s in data[1]]], device=self.device)
             tp = torch.tensor([[tp for tp in data[4]]], device=self.device)
             idx = (subject * 10 + tp).cpu().detach().numpy().squeeze()
-
+            bs = len(idx)
             for i, id in enumerate(idx):
                 if id >= N - self.fold * 2000:
                     idx[i] -= 2000
+            # fixed part
+            alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float().view(bs, -1)
+            delta_age = torch.tensor(self.X[:, 1]).to(self.device).float().view(N, -1)
+            delta_age = delta_age[idx].view(bs, -1)
+            fixed = torch.tanh(torch.mul(delta_age, alpha)).view(bs, -1)
+            fixed = torch.cat((fixed, torch.zeros([alpha.size()[0], dim_z - 1]).to(self.device).float()), dim=1)
+            # random part
+            Y = (self.Y[:, ::2]).to(self.device).float()
+            omega = torch.matmul(Y, self.omega)
+            omega = omega[idx]
 
-            alpha = torch.tensor([[a.exp() for a in data[6]]], device=self.device).float()
-            delta = torch.tensor([[a - ba for a, ba in zip(data[3], data[2])]], device=self.device)
-            fixed = torch.tanh(torch.mul(alpha, delta).squeeze())
-            omega = self.omega[idx]
-            for i, f in enumerate(fixed):
-                omega[i][0] = f
-            return omega
+            return fixed + omega
 
     def train_(self, data_loader, test, optimizer, num_epochs):
         self.to(self.device)
@@ -2466,12 +2470,14 @@ class Riem_VAE(nn.Module):
         return loss
 
     def update_omega(self, Z, alpha):
-        delta = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
-        fixed = torch.tanh(torch.mul(delta, alpha))
+        delta_age = torch.tensor(self.X[:, 1]).to(self.device).float().view(alpha.size())
+        fixed = torch.tanh(torch.mul(delta_age, alpha))
         fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
-        for i in range(5):
-            self.omega = 1 / (1 - self.sigma_2) * (Z - fixed)
-            self.sigma_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - fixed - self.omega, p='fro'), 2)
+        Y = (self.Y[:, ::2]).to(self.device).float()
+        self.omega = torch.matmul(
+            torch.inverse(torch.matmul(Y, torch.transpose(Y, 0, 1)) + torch.eye(Y.size()[0], device=self.device)),
+            torch.matmul(torch.transpose(Y, 0, 1), Z - fixed)
+        )
 
     def plot_recon(self, data, n_subject=3):
         # Plot the reconstruction
