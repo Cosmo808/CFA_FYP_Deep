@@ -106,12 +106,35 @@ def get_pred_loss(image, model_name, missing_num=6):
                               * autoencoder.sigma2_2 * torch.eye(yty.size()[0], device=autoencoder.device)),
                 autoencoder.sigma2_2 * yt_z_xbeta + autoencoder.sigma0_2 * yt_zv
             )
-            # get z1 and loss
+            # get z1
             z1 = torch.matmul(X1, autoencoder.beta) + torch.matmul(Y1, b)
-            predicted = autoencoder.decoder(z1)
+
         if model_name == 'Riem_VAE':
-            
-        return autoencoder.loss(predicted, input_1)
+            # get z
+            z0, _ = autoencoder.encoder(input_0)
+            # get alpha
+            alpha = torch.tensor([[a.exp() for a in data[6]]], device=autoencoder.device).float().view(z0.size()[0], -1)
+            alpha0, alpha1 = alpha[idx0], alpha[idx1]
+            # get delta age
+            delta_age0 = torch.tensor(X0[:, 1]).to(autoencoder.device).float().view(alpha.size())
+            delta_age1 = torch.tensor(X1[:, 1]).to(autoencoder.device).float().view(alpha.size())
+            # calculate fixed
+            fixed0 = torch.tanh(torch.mul(delta_age0, alpha0))
+            fixed1 = torch.tanh(torch.mul(delta_age1, alpha1))
+            fixed0 = torch.cat((fixed0, torch.zeros([z0.size()[0], z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
+            fixed1 = torch.cat((fixed1, torch.zeros([z0.size()[0], z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
+            # calculate random
+            Y0 = (Y0[:, ::2]).to(autoencoder.device).float()
+            Y1 = (Y1[:, ::2]).to(autoencoder.device).float()
+            omega = torch.matmul(
+                torch.inverse(torch.matmul(torch.transpose(Y0, 0, 1), Y0) + torch.eye(Y0.size()[1], device=autoencoder.device)),
+                torch.matmul(torch.transpose(Y0, 0, 1), z0 - fixed0)
+            )
+            # get z1
+            z1 = fixed1 + torch.matmul(Y1, omega)
+
+        predicted = autoencoder.decoder(z1)
+        return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
 
     if model_name in vae_pred_class:
         if model_name in vae_disen_recon_class:

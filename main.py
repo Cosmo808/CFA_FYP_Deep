@@ -27,7 +27,7 @@ parser.add_argument('--fold', type=int, default=0)
 input_para = parser.parse_args()
 
 if __name__ == '__main__':
-    logger.info(f"Device is {input_para.device}")
+    logger.info(f"Device is {torch.device(input_para.device)}")
     logger.info(f"##### Fold {input_para.fold + 1}/5 #####\n")
 
     # make directory
@@ -59,10 +59,10 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model.Riem_VAE()
-    autoencoder.device = input_para.device
+    autoencoder.device = torch.device(input_para.device)
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
-        X, Y = Variable(X).to(input_para.device).float(), Variable(Y).to(input_para.device).float()
+        X, Y = Variable(X).to(torch.device(input_para.device)).float(), Variable(Y).to(torch.device(input_para.device)).float()
         autoencoder.X, autoencoder.Y = X, Y
     if hasattr(autoencoder, 'batch_size'):
         autoencoder.batch_size = batch_size
