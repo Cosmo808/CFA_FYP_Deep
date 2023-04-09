@@ -7,6 +7,7 @@ import sys
 import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess
+import argparse
 import model
 
 
@@ -20,13 +21,14 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-fold = 4
-
+parser = argparse.ArgumentParser()
+parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--fold', type=int, default=0)
+input_para = parser.parse_args()
 
 if __name__ == '__main__':
-    logger.info(f"Device is {device}")
-    logger.info(f"##### Fold {fold + 1}/5 #####\n")
+    logger.info(f"Device is {input_para.device}")
+    logger.info(f"##### Fold {input_para.fold + 1}/5 #####\n")
 
     # make directory
     if not os.path.exists('model'):
@@ -41,7 +43,7 @@ if __name__ == '__main__':
 
     # load data
     data_generator = Data_preprocess()
-    train_data, test_data = data_generator.generate_train_test(fold)
+    train_data, test_data = data_generator.generate_train_test(input_para.fold)
     logger.info(f"Loaded {len(train_data['path']) + len(test_data['path'])} scans")
 
     train_data.requires_grad = False
@@ -57,20 +59,20 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model.Riem_VAE()
-    autoencoder.device = device
+    autoencoder.device = input_para.device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
-        X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
+        X, Y = Variable(X).to(input_para.device).float(), Variable(Y).to(input_para.device).float()
         autoencoder.X, autoencoder.Y = X, Y
     if hasattr(autoencoder, 'batch_size'):
         autoencoder.batch_size = batch_size
     if hasattr(autoencoder, 'fold'):
-        autoencoder.fold = fold
+        autoencoder.fold = input_para.fold
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test=test, optimizer=optimizer, num_epochs=epochs)
-    torch.save(autoencoder, 'model/{}_fold_{}'.format(fold, autoencoder.name))
-    logger.info(f"##### Fold {fold + 1}/5 finished #####\n")
-    logger.info("Model saved in model/{}_fold_{}".format(fold, autoencoder.name))
+    torch.save(autoencoder, 'model/{}_fold_{}'.format(input_para.fold, autoencoder.name))
+    logger.info(f"##### Fold {input_para.fold + 1}/5 finished #####\n")
+    logger.info("Model saved in model/{}_fold_{}".format(input_para.fold, autoencoder.name))

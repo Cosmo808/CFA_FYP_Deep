@@ -2475,7 +2475,7 @@ class Riem_VAE(nn.Module):
         fixed = torch.cat((fixed, torch.zeros([N, dim_z - 1]).to(self.device).float()), dim=1)
         Y = (self.Y[:, ::2]).to(self.device).float()
         self.omega = torch.matmul(
-            torch.inverse(torch.matmul(Y, torch.transpose(Y, 0, 1)) + torch.eye(Y.size()[0], device=self.device)),
+            torch.inverse(torch.matmul(torch.transpose(Y, 0, 1), Y) + torch.eye(Y.size()[1], device=self.device)),
             torch.matmul(torch.transpose(Y, 0, 1), Z - fixed)
         )
 
