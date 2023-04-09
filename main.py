@@ -22,12 +22,14 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
 input_para = parser.parse_args()
 
 if __name__ == '__main__':
-    logger.info(f"Device is {torch.device(input_para.device)}")
+    device = torch.device('cuda')
+    torch.cuda.set_device(input_para.cuda)
+    logger.info(f"Device is {device}")
     logger.info(f"##### Fold {input_para.fold + 1}/5 #####\n")
 
     # make directory
@@ -59,7 +61,7 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model.Riem_VAE()
-    autoencoder.device = torch.device(input_para.device)
+    autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
         X, Y = Variable(X).to(torch.device(input_para.device)).float(), Variable(Y).to(torch.device(input_para.device)).float()
