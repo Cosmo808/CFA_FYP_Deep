@@ -2286,7 +2286,7 @@ class Riem_VAE(nn.Module):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.fold = None
         self.beta = 2.
-        self.gamma = 3.
+        self.gamma = 100.
 
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32
         self.conv2 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 32 x 16 x 16
