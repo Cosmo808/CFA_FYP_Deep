@@ -119,8 +119,8 @@ def get_pred_loss(image, model_name, missing_num=6):
             delta_age0 = X0[:, 1].clone().detach().to(autoencoder.device).float().view(alpha0.size())
             delta_age1 = X1[:, 1].clone().detach().to(autoencoder.device).float().view(alpha1.size())
             # calculate fixed
-            fixed0 = torch.tanh(torch.mul(delta_age0, alpha0))
-            fixed1 = torch.tanh(torch.mul(delta_age1, alpha1))
+            fixed0 = torch.mul(delta_age0, alpha0) / 50
+            fixed1 = torch.mul(delta_age1, alpha1) / 50
             fixed0 = torch.cat((fixed0, torch.zeros([len(idx0), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
             fixed1 = torch.cat((fixed1, torch.zeros([len(idx1), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
             # calculate random
@@ -130,12 +130,11 @@ def get_pred_loss(image, model_name, missing_num=6):
                 torch.inverse(torch.matmul(torch.transpose(Y0, 0, 1), Y0) + torch.eye(Y0.size()[1], device=autoencoder.device)),
                 torch.matmul(torch.transpose(Y0, 0, 1), z0 - fixed0)
             )
+            random = torch.matmul(Y1, omega)
+            random[:, 0] = 0.
             # get z1
-            z1 = fixed1 + torch.matmul(Y1, omega)
-            longitudinal = fixed0 + torch.matmul(Y0, omega)
-            print(z0[:3])
-            print(longitudinal[:3])
-            exit()
+            z1 = fixed1 + random
+
         predicted = autoencoder.decoder(z1)
         return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
 
@@ -284,6 +283,7 @@ if __name__ == '__main__':
                 PCA_ZU = ZU.cpu().detach().numpy().squeeze()
             if model_name == 'Riem_VAE':
                 PCA_ZU = ZU[:, 0].cpu().detach().numpy().squeeze()
+
             # get psi
             if ZU.size()[0] == 10000:
                 psi = all_data['alpha'] * (all_data['age'] - all_data['baseline_age'])
@@ -306,3 +306,6 @@ if __name__ == '__main__':
     print('pls_R2: ', np.mean(pls_R2), np.std(pls_R2))
     print('orthogonality: ', np.mean(orthogonality), np.std(orthogonality))
     print('future prediction loss: ', np.mean(pred_loss), np.std(pred_loss))
+
+    print(train_recon)
+    print(spearmanr)

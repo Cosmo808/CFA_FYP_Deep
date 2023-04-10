@@ -2365,10 +2365,11 @@ class Riem_VAE(nn.Module):
             fixed = torch.cat((fixed, torch.zeros([alpha.size()[0], dim_z - 1]).to(self.device).float()), dim=1)
             # random part
             Y = self.Y[:, ::2].to(self.device).float()
-            omega = torch.matmul(Y, self.omega)
-            omega = omega[idx]
+            random = torch.matmul(Y, self.omega)
+            random = random[idx]
+            random[:, 0] = 0.
 
-            return fixed + omega
+            return fixed + random
 
     def train_(self, data_loader, test, optimizer, num_epochs):
         self.to(self.device)
