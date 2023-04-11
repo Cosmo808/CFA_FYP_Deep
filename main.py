@@ -41,8 +41,8 @@ if __name__ == '__main__':
         os.mkdir('visualization')
 
     # hyperparameter
-    epochs = 300
-    lr = 1e-3
+    epochs = 400
+    lr = 1e-4
     batch_size = 128
 
     # load data
