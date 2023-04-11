@@ -24,10 +24,16 @@ logger.addHandler(ch)
 parser = argparse.ArgumentParser()
 parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
+parser.add_argument('--epochs', type=int, default=300)
+parser.add_argument('--bs', type=int, default=128)
 input_para = parser.parse_args()
 
+# hyperparameter
 device = torch.device(f"cuda:{input_para.cuda}")
 fold = input_para.fold
+epochs = input_para.epochs
+lr = 1e-3
+batch_size = input_para.bs
 
 
 if __name__ == '__main__':
@@ -39,11 +45,6 @@ if __name__ == '__main__':
         os.mkdir('model')
     if not os.path.exists('visualization'):
         os.mkdir('visualization')
-
-    # hyperparameter
-    epochs = 400
-    lr = 1e-4
-    batch_size = 128
 
     # load data
     data_generator = Data_preprocess()
