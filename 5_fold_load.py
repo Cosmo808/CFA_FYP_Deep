@@ -67,11 +67,15 @@ def get_reconstruction(input_, model_name):
         zu, zv = None, None
         z, logVar, reconstructed = autoencoder.forward(input_)
         reconstruction_loss, _ = autoencoder.loss(z, logVar, reconstructed, input_)
+        if model_name == 'Riem_VAE':
+            zu = torch.transpose(z[:, 0].repeat(3, 1), 0, 1)
+            zv = z[:, 1:]
 
     return reconstruction_loss, zu, zv, z
 
 
 def get_pred_loss(image, model_name, missing_num=6):
+    autoencoder.eval()
     num_subject = image.size()[0] // 10
     idx0, idx1 = [], []
     for i in range(num_subject):
@@ -134,6 +138,15 @@ def get_pred_loss(image, model_name, missing_num=6):
             random[:, 0] = 0.
             # get z1
             z1 = fixed1 + random
+
+            random = torch.matmul(Y0, omega)
+            random[:, 0] = 0.
+            z0_ = fixed0 + random
+            print(torch.sum((z0 - z0_) ** 2) / z0.shape[0])
+            print(z0[:5])
+            print(z0_[:5])
+            print(torch.sum((autoencoder.decoder(z0_) - autoencoder.decoder(z0)) ** 2) / input_0.shape[0])
+            exit()
 
         predicted = autoencoder.decoder(z1)
         return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
@@ -236,13 +249,13 @@ if __name__ == '__main__':
                 losses += float(loss)
 
                 # store ZU, ZV
-                if model_name in ae_disen_recon_class + vae_disen_recon_class:
+                if zv is not None:
                     if ZU is None:
                         ZU, ZV = zu, zv
                     else:
                         ZU = torch.cat((ZU, zu), 0)
                         ZV = torch.cat((ZV, zv), 0)
-                if model_name in model_class + vae_no_disen_recon_class:
+                else:
                     if ZU is None:
                         ZU = z
                     else:
@@ -308,4 +321,5 @@ if __name__ == '__main__':
     print('future prediction loss: ', np.mean(pred_loss), np.std(pred_loss))
 
     print(train_recon)
+    print(test_recon)
     print(spearmanr)
