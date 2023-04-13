@@ -1,8 +1,7 @@
 import torch
 from torch.utils import data
 from dataset import Dataset_starmen
-from data_preprocess import Data_preprocess
-import matplotlib.pyplot as plt
+from data_preprocess import Data_preprocess_starmen
 import pandas as pd
 import scipy.stats as stats
 from sklearn.cross_decomposition import PLSRegression
@@ -168,7 +167,7 @@ def get_pred_loss(image, model_name, missing_num=6):
 
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
-    data_generator = Data_preprocess()
+    data_generator = Data_preprocess_starmen()
 
     train_recon, test_recon = [], []
     orthogonality, pls_R2 = [], []

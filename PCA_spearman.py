@@ -1,11 +1,8 @@
 import torch
 from torch.utils import data
 from dataset import Dataset_starmen
-from data_preprocess import Data_preprocess
+from data_preprocess import Data_preprocess_starmen
 from torch.autograd import Variable
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import logging
@@ -31,7 +28,7 @@ if __name__ == '__main__':
     autoencoder.eval()
 
     # load data
-    data_generator = Data_preprocess()
+    data_generator = Data_preprocess_starmen()
     dataset = data_generator.generate_all()
     dataset.requires_grad = False
 

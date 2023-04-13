@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 
-class Data_preprocess:
+class Data_preprocess_starmen:
     def __init__(self):
         self.p = 0.2
         self.catalog = pd.read_csv('index.csv')

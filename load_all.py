@@ -1,7 +1,7 @@
 import torch
 from torch.utils import data
 from dataset import Dataset_starmen
-from data_preprocess import Data_preprocess
+from data_preprocess import Data_preprocess_starmen
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -24,7 +24,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
-    data_generator = Data_preprocess()
+    data_generator = Data_preprocess_starmen()
     autoencoder = torch.load('model/best_starmen', map_location=device)
     autoencoder.eval()
     # load train and test data
