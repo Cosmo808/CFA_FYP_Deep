@@ -131,22 +131,13 @@ def get_pred_loss(image, model_name, missing_num=6):
             Y0 = (Y0[:, ::2]).to(autoencoder.device).float()
             Y1 = (Y1[:, ::2]).to(autoencoder.device).float()
             omega = torch.matmul(
-                torch.inverse(torch.matmul(torch.transpose(Y0, 0, 1), Y0) + torch.eye(Y0.size()[1], device=autoencoder.device)),
+                torch.inverse(torch.matmul(torch.transpose(Y0, 0, 1), Y0)),
                 torch.matmul(torch.transpose(Y0, 0, 1), z0 - fixed0)
             )
             random = torch.matmul(Y1, omega)
             random[:, 0] = 0.
             # get z1
             z1 = fixed1 + random
-
-            random = torch.matmul(Y0, omega)
-            random[:, 0] = 0.
-            z0_ = fixed0 + random
-            print(torch.sum((z0 - z0_) ** 2) / z0.shape[0])
-            print(z0[:5])
-            print(z0_[:5])
-            print(torch.sum((autoencoder.decoder(z0_) - autoencoder.decoder(z0)) ** 2) / input_0.shape[0])
-            exit()
 
         predicted = autoencoder.decoder(z1)
         return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
@@ -322,4 +313,5 @@ if __name__ == '__main__':
 
     print(train_recon)
     print(test_recon)
+    print(pred_loss)
     print(spearmanr)
