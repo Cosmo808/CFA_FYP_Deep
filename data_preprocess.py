@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import torch
+import csv
+import h5py
 
 
 class Data_preprocess_starmen:
@@ -68,4 +70,114 @@ class Data_preprocess_starmen:
         X = torch.tensor(X.values)
         Y = torch.tensor(Y.values)
         return X, Y
+
+
+class Data_preprocess_ADNI:
+    def __init__(self, cuda=0):
+        self.device = torch.device(f"cuda:{cuda}")
+
+        # demographic
+        self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
+        self.demo_test = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_test.mat')
+
+        # self.demo_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+        #                             'adni_all_surf_info_regular_longitudinal_random_train.mat')
+        # self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+        #                            'adni_all_surf_info_regular_longitudinal_random_test.mat')
+
+        # thickness
+        self.thickness_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                         'adni_all_surf_thickness_regular_longitudinal_random_train.mat')
+        self.thickness_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                        'adni_all_surf_thickness_regular_longitudinal_random_test.mat')
+
+        # sort index
+        self.idx1_train, self.idx1_test = None, None
+        self.idx2_train, self.idx2_test = None, None
+
+    def generate_demo_train_test(self):
+        # load data
+        age_train = torch.tensor(self.demo_train['Age'], device=self.device).squeeze()
+        age_test = torch.tensor(self.demo_test['Age'], device=self.device).squeeze()
+        label_train = torch.tensor(self.demo_train['Label'], device=self.device).squeeze()
+        label_test = torch.tensor(self.demo_test['Label'], device=self.device).squeeze()
+        timepoint_train = torch.tensor(self.demo_train['Wave'], device=self.device).squeeze()
+        timepoint_test = torch.tensor(self.demo_test['Wave'], device=self.device).squeeze()
+        with open('ADNI/subject_train.csv', 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            subject_train = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader], device=self.device).squeeze()
+        with open('ADNI/subject_test.csv', 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            subject_test = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader], device=self.device).squeeze()
+
+        # get sort data index
+        idx1_train, idx1_test = timepoint_train.sort()[1], timepoint_test.sort()[1]
+        sorted_train, sorted_test = subject_train[idx1_train], subject_test[idx1_test]
+        idx2_train, idx2_test = sorted_train.sort()[1], sorted_test.sort()[1]
+        self.idx1_train, self.idx1_test = idx1_train, idx1_test
+        self.idx2_train, self.idx2_test = idx2_train, idx2_test
+        # sort data
+        age_train, age_test = age_train[idx1_train], age_test[idx1_test]
+        label_train, label_test = label_train[idx1_train], label_test[idx1_test]
+        timepoint_train, timepoint_test = timepoint_train[idx1_train], timepoint_test[idx1_test]
+        subject_train, subject_test = subject_train[idx1_train], subject_test[idx1_test]
+
+        age_train, age_test = age_train[idx2_train], age_test[idx2_test]
+        label_train, label_test = label_train[idx2_train], label_test[idx2_test]
+        timepoint_train, timepoint_test = timepoint_train[idx2_train], timepoint_test[idx2_test]
+        subject_train, subject_test = subject_train[idx2_train], subject_test[idx2_test]
+
+        baseline_age_train, baseline_age_test = [], []
+        s_old = None
+        for age, subject in zip(age_train, subject_train):
+            if s_old is None:
+                baseline_age_train.append(age)
+                s_old = subject
+            else:
+                if subject == s_old:
+                    baseline_age_train.append(baseline_age_train[-1])
+                else:
+                    baseline_age_train.append(age)
+                    s_old = subject
+        for age, subject in zip(age_test, subject_test):
+            if s_old is None:
+                baseline_age_test.append(age)
+                s_old = subject
+            else:
+                if subject == s_old:
+                    baseline_age_test.append(baseline_age_test[-1])
+                else:
+                    baseline_age_test.append(age)
+                    s_old = subject
+        baseline_age_train = torch.tensor(baseline_age_train, device=self.device)
+        baseline_age_test = torch.tensor(baseline_age_test, device=self.device)
+
+        demo_train = {'age': age_train, 'baseline_age': baseline_age_train, 'label': label_train,
+                      'subject': subject_train, 'timepoint': timepoint_train}
+        demo_test = {'age': age_test, 'baseline_age': baseline_age_test, 'label': label_test,
+                     'subject': subject_test, 'timepoint': timepoint_test}
+        return demo_train, demo_test
+
+    def generate_thick_train_test(self):
+        if self.idx1_train is None:
+            _, _ = self.generate_demo_train_test()
+
+        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'], device=self.device).transpose(0, 1)
+        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'], device=self.device).transpose(0, 1)
+        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'], device=self.device).transpose(0, 1)
+        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'], device=self.device).transpose(0, 1)
+
+        left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
+        left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
+        thick_train = {'left': left_thick_train, 'right': right_thick_train}
+        thick_test = {'left': left_thick_test, 'right': right_thick_test}
+        return thick_train, thick_test
+
+
+if __name__ == '__main__':
+    a = Data_preprocess_ADNI()
+
+    tr, te = a.generate_demo_train_test()
+
+
 

@@ -1,7 +1,7 @@
 # ignore data and result file
 data/
 visualization/
-ADNI/
+
 
 # ignore model file
 model/
