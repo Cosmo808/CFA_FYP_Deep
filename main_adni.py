@@ -67,9 +67,9 @@ if __name__ == '__main__':
                     demo_test['label'], demo_test['subject'], demo_test['timepoint'])
 
     train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False,
-                                               num_workers=0, drop_last=False, pin_memory=True)
+                                               num_workers=0, drop_last=False)
     test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=False,
-                                               num_workers=0, drop_last=False, pin_memory=True)
+                                               num_workers=0, drop_last=False)
     print('Generating data loader finished...')
 
     # training
