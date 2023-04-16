@@ -74,7 +74,6 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model_adni.test_AE(input_dim, left_right)
-    autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
         X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()

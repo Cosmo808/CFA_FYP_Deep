@@ -74,7 +74,6 @@ class Data_preprocess_starmen:
 
 class Data_preprocess_ADNI:
     def __init__(self, ratio=0.25):
-        self.device = torch.device('cuda:0')
         self.ratio = ratio
 
         # demographic
@@ -100,18 +99,18 @@ class Data_preprocess_ADNI:
 
     def generate_demo_train_test(self, fold):
         # load data
-        age_train = torch.tensor(self.demo_train['Age'], device=self.device).float().squeeze()
-        age_test = torch.tensor(self.demo_test['Age'], device=self.device).float().squeeze()
-        label_train = torch.tensor(self.demo_train['Label'], device=self.device).float().squeeze()
-        label_test = torch.tensor(self.demo_test['Label'], device=self.device).float().squeeze()
-        timepoint_train = torch.tensor(self.demo_train['Wave'], device=self.device).float().squeeze()
-        timepoint_test = torch.tensor(self.demo_test['Wave'], device=self.device).float().squeeze()
+        age_train = torch.tensor(self.demo_train['Age']).float().squeeze()
+        age_test = torch.tensor(self.demo_test['Age']).float().squeeze()
+        label_train = torch.tensor(self.demo_train['Label']).float().squeeze()
+        label_test = torch.tensor(self.demo_test['Label']).float().squeeze()
+        timepoint_train = torch.tensor(self.demo_train['Wave']).float().squeeze()
+        timepoint_test = torch.tensor(self.demo_test['Wave']).float().squeeze()
         with open('ADNI/subject_train.csv', 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            subject_train = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader], device=self.device).squeeze()
+            subject_train = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader]).squeeze()
         with open('ADNI/subject_test.csv', 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            subject_test = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader], device=self.device).squeeze()
+            subject_test = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader]).squeeze()
 
         # get sort data index
         idx1_train, idx1_test = timepoint_train.sort()[1], timepoint_test.sort()[1]
@@ -152,8 +151,8 @@ class Data_preprocess_ADNI:
                 else:
                     baseline_age_test.append(age)
                     s_old = subject
-        baseline_age_train = torch.tensor(baseline_age_train, device=self.device).float()
-        baseline_age_test = torch.tensor(baseline_age_test, device=self.device).float()
+        baseline_age_train = torch.tensor(baseline_age_train).float()
+        baseline_age_test = torch.tensor(baseline_age_test).float()
 
         demo_train = {'age': age_train, 'baseline_age': baseline_age_train, 'label': label_train,
                       'subject': subject_train, 'timepoint': timepoint_train}
@@ -171,10 +170,10 @@ class Data_preprocess_ADNI:
             _, _ = self.generate_demo_train_test(fold)
 
         num = int(self.thickness_train['lthick_regular'].shape[1] * self.ratio)
-        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'][:, :num], device=self.device).float()
-        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'][:, :num], device=self.device).float()
-        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'][:, :num], device=self.device).float()
-        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'][:, :num], device=self.device).float()
+        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'][:, :num]).float()
+        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'][:, :num]).float()
+        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'][:, :num]).float()
+        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'][:, :num]).float()
 
         left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
         left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
@@ -192,7 +191,7 @@ class Data_preprocess_ADNI:
         I = len(torch.unique(data['subject']))
 
         delta_age = (data['age'] - data['baseline_age']).view(N, -1)
-        ones = torch.ones(size=delta_age.size(), device=self.device)
+        ones = torch.ones(size=delta_age.size())
         X = torch.cat((ones, delta_age, data['baseline_age'].view(N, -1)), dim=1)
 
         Y, old_s, cnt_zero = None, None, 0
@@ -203,8 +202,8 @@ class Data_preprocess_ADNI:
                 old_s = data['subject'][i]
                 cnt_zero += 1
 
-            zeros0 = torch.zeros(size=[1, 2 * cnt_zero], device=self.device)
-            zeros1 = torch.zeros(size=[1, 2 * (I - 1 - cnt_zero)], device=self.device)
+            zeros0 = torch.zeros(size=[1, 2 * cnt_zero])
+            zeros1 = torch.zeros(size=[1, 2 * (I - 1 - cnt_zero)])
             yy = X[i, :2].view(1, 2)
             yy = torch.cat((zeros0, yy, zeros1), dim=1)
 
