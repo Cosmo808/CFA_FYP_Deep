@@ -26,7 +26,8 @@ class AE_adni(nn.Module):
         super(AE_adni, self).__init__()
         nn.Module.__init__(self)
         self.name = 'AE_adni'
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device0 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device1 = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
         self.gamma = 1
         self.input_dim = input_dim
         self.left_right = left_right
@@ -72,12 +73,12 @@ class AE_adni(nn.Module):
             return reconstructed, z0, zu0, zv0
 
     def _init_mixed_effect_model(self):
-        self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device)
-        self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
-        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
-        self.V = torch.eye(dim_z, device=self.device) - self.U
+        self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device1)
+        self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device1)
+        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device1)).float()
+        self.V = torch.eye(dim_z, device=self.device1) - self.U
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1, 0.5, 1
-        self.D = torch.eye(self.Y.size()[1], device=self.device).float()
+        self.D = torch.eye(self.Y.size()[1], device=self.device1).float()
 
     @staticmethod
     def loss(input_, reconstructed):
@@ -85,7 +86,7 @@ class AE_adni(nn.Module):
         return recon_loss
 
     def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
-        self.to(self.device)
+        self.to(self.device0)
         self._init_mixed_effect_model()
         best_loss = 1e10
         es = 0
@@ -108,13 +109,13 @@ class AE_adni(nn.Module):
                 optimizer.zero_grad()
 
                 # self-reconstruction loss
-                input_ = Variable(image).to(self.device)
+                input_ = Variable(image).to(self.device0)
                 reconstructed, z, zu, zv = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
                 # store Z, ZU, ZV
-                subject = torch.tensor([[s for s in data[5]]], device=self.device)
-                tp = torch.tensor([[tp for tp in data[6]]], device=self.device)
+                subject = torch.tensor([[s for s in data[5]]], device=self.device0)
+                tp = torch.tensor([[tp for tp in data[6]]], device=self.device0)
                 st = torch.transpose(torch.cat((subject, tp), 0), 0, 1)
                 if s_tp is None:
                     s_tp, Z, ZU, ZV = st, z, zu, zv
@@ -131,8 +132,8 @@ class AE_adni(nn.Module):
                 image0 = image[index0]
                 image1 = image[index1]
                 if index0:
-                    input0_ = Variable(image0).to(self.device)
-                    input1_ = Variable(image1).to(self.device)
+                    input0_ = Variable(image0).to(self.device0)
+                    input1_ = Variable(image1).to(self.device0)
                     reconstructed = self.forward(input0_, input1_)
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
@@ -166,7 +167,7 @@ class AE_adni(nn.Module):
             logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
     def evaluate(self, test_data_loader):
-        self.to(self.device)
+        self.to(self.device1)
         self.training = False
         self.eval()
         tloss = 0.0
@@ -178,7 +179,7 @@ class AE_adni(nn.Module):
                 image = data[self.left_right]
 
                 # self-reconstruction loss
-                input_ = Variable(image).to(self.device)
+                input_ = Variable(image).to(self.device1)
                 reconstructed, z, zu, zv = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
@@ -189,8 +190,8 @@ class AE_adni(nn.Module):
                 image0 = image[index0]
                 image1 = image[index1]
                 if index0:
-                    input0_ = Variable(image0).to(self.device)
-                    input1_ = Variable(image1).to(self.device)
+                    input0_ = Variable(image0).to(self.device1)
+                    input1_ = Variable(image1).to(self.device1)
                     reconstructed = self.forward(input0_, input1_)
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
@@ -222,11 +223,11 @@ class AE_adni(nn.Module):
         return index0, index1
 
     def generative_parameter_update(self, Z, ZU, ZV):
-        X = Variable(self.X).to(self.device).float()
-        Y = Variable(self.Y).to(self.device).float()
-        Z = Variable(Z).to(self.device).float()
-        ZU = Variable(ZU).to(self.device).float()
-        ZV = Variable(ZV).to(self.device).float()
+        X = Variable(self.X).to(self.device1).float()
+        Y = Variable(self.Y).to(self.device1).float()
+        Z = Variable(Z).to(self.device1).float()
+        ZU = Variable(ZU).to(self.device1).float()
+        ZV = Variable(ZV).to(self.device1).float()
         N = X.size()[0]
 
         xt = torch.transpose(X, 0, 1)
@@ -242,7 +243,7 @@ class AE_adni(nn.Module):
 
         for epoch in range(5):
             # updata beta and b
-            H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
+            H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device1).float()
             H_inv = torch.inverse(H)
             xt_hi_x = torch.matmul(torch.matmul(xt, H_inv), X)
             xt_hi_z = torch.matmul(torch.matmul(xt, H_inv), Z)
@@ -294,7 +295,8 @@ class test_AE(nn.Module):
         super(test_AE, self).__init__()
         nn.Module.__init__(self)
         self.name = 'test_AE'
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device0 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device1 = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
         self.gamma = 1
         self.input_dim = input_dim
         self.left_right = left_right
@@ -330,9 +332,8 @@ class test_AE(nn.Module):
         recon_loss = torch.mean((reconstructed - input_) ** 2)
         return recon_loss
 
-    def train_(self, train_data_loader, optimizer, num_epochs):
-        self.to(self.device)
-        self._init_mixed_effect_model()
+    def train_(self, train_data_loader, a, optimizer, num_epochs):
+        self.to(self.device0)
         best_loss = 1e10
         es = 0
 
@@ -353,7 +354,7 @@ class test_AE(nn.Module):
                 optimizer.zero_grad()
 
                 # self-reconstruction loss
-                input_ = Variable(image).to(self.device)
+                input_ = Variable(image).to(self.device0)
                 reconstructed, z, zu, zv = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
