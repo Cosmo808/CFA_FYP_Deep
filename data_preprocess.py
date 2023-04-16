@@ -78,13 +78,13 @@ class Data_preprocess_ADNI:
         self.ratio = ratio
 
         # demographic
-        # self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
-        # self.demo_test = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_test.mat')
+        self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
+        self.demo_test = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_test.mat')
 
-        self.demo_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-                                    'adni_all_surf_info_regular_longitudinal_random_train.mat')
-        self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-                                   'adni_all_surf_info_regular_longitudinal_random_test.mat')
+        # self.demo_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+        #                             'adni_all_surf_info_regular_longitudinal_random_train.mat')
+        # self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+        #                            'adni_all_surf_info_regular_longitudinal_random_test.mat')
         print('Reading demographical data finished...')
 
         # thickness
