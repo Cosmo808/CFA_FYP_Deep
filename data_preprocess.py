@@ -100,12 +100,12 @@ class Data_preprocess_ADNI:
 
     def generate_demo_train_test(self, fold):
         # load data
-        age_train = torch.tensor(self.demo_train['Age'], device=self.device).squeeze()
-        age_test = torch.tensor(self.demo_test['Age'], device=self.device).squeeze()
-        label_train = torch.tensor(self.demo_train['Label'], device=self.device).squeeze()
-        label_test = torch.tensor(self.demo_test['Label'], device=self.device).squeeze()
-        timepoint_train = torch.tensor(self.demo_train['Wave'], device=self.device).squeeze()
-        timepoint_test = torch.tensor(self.demo_test['Wave'], device=self.device).squeeze()
+        age_train = torch.tensor(self.demo_train['Age'], device=self.device).float().squeeze()
+        age_test = torch.tensor(self.demo_test['Age'], device=self.device).float().squeeze()
+        label_train = torch.tensor(self.demo_train['Label'], device=self.device).float().squeeze()
+        label_test = torch.tensor(self.demo_test['Label'], device=self.device).float().squeeze()
+        timepoint_train = torch.tensor(self.demo_train['Wave'], device=self.device).float().squeeze()
+        timepoint_test = torch.tensor(self.demo_test['Wave'], device=self.device).float().squeeze()
         with open('ADNI/subject_train.csv', 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             subject_train = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader], device=self.device).squeeze()
@@ -152,8 +152,8 @@ class Data_preprocess_ADNI:
                 else:
                     baseline_age_test.append(age)
                     s_old = subject
-        baseline_age_train = torch.tensor(baseline_age_train, device=self.device)
-        baseline_age_test = torch.tensor(baseline_age_test, device=self.device)
+        baseline_age_train = torch.tensor(baseline_age_train, device=self.device).float()
+        baseline_age_test = torch.tensor(baseline_age_test, device=self.device).float()
 
         demo_train = {'age': age_train, 'baseline_age': baseline_age_train, 'label': label_train,
                       'subject': subject_train, 'timepoint': timepoint_train}
@@ -171,10 +171,10 @@ class Data_preprocess_ADNI:
             _, _ = self.generate_demo_train_test(fold)
 
         num = int(self.thickness_train['lthick_regular'].shape[1] * self.ratio)
-        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'][:, num], device=self.device)
-        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'][:, num], device=self.device)
-        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'][:, num], device=self.device)
-        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'][:, num], device=self.device)
+        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'][:, num], device=self.device).float()
+        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'][:, num], device=self.device).float()
+        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'][:, num], device=self.device).float()
+        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'][:, num], device=self.device).float()
 
         left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
         left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
