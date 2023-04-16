@@ -85,12 +85,14 @@ class Data_preprocess_ADNI:
                                     'adni_all_surf_info_regular_longitudinal_random_train.mat')
         self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
                                    'adni_all_surf_info_regular_longitudinal_random_test.mat')
+        print('Reading demographical data finished...')
 
         # thickness
         self.thickness_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
                                          'adni_all_surf_thickness_regular_longitudinal_random_train.mat')
         self.thickness_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
                                         'adni_all_surf_thickness_regular_longitudinal_random_test.mat')
+        print('Reading thickness data finished...')
 
         # sort index
         self.idx1_train, self.idx1_test = None, None
@@ -158,6 +160,7 @@ class Data_preprocess_ADNI:
         demo_test = {'age': age_test, 'baseline_age': baseline_age_test, 'label': label_test,
                      'subject': subject_test, 'timepoint': timepoint_test}
 
+        print('Generating demographical data finished...')
         if fold == 0:
             return demo_train, demo_test
         else:
@@ -179,6 +182,7 @@ class Data_preprocess_ADNI:
         thick_train = {'left': left_thick_train, 'right': right_thick_train}
         thick_test = {'left': left_thick_test, 'right': right_thick_test}
 
+        print('Generating thickness data finished...')
         if fold == 0:
             return thick_train, thick_test, num
         else:
@@ -210,4 +214,5 @@ class Data_preprocess_ADNI:
             else:
                 Y = torch.cat((Y, yy), dim=0)
 
+        print('Generating X and Y finished...')
         return X, Y

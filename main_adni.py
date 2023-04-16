@@ -70,6 +70,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
     test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=False,
                                                num_workers=0, drop_last=False, pin_memory=True)
+    print('Generating data loader finished...')
 
     # training
     autoencoder = model_adni.AE_adni(input_dim, left_right)
@@ -82,6 +83,7 @@ if __name__ == '__main__':
         autoencoder.batch_size = batch_size
     print(f"Model has a total of {sum(p.numel() for p in autoencoder.parameters())} parameters")
 
+    print('Start training...')
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test_loader, optimizer=optimizer, num_epochs=epochs)
