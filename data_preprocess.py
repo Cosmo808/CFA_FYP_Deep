@@ -214,3 +214,4 @@ class Data_preprocess_ADNI:
 
         print('Generating X and Y finished...')
         return X, Y
+

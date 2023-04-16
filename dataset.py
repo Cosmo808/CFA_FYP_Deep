@@ -41,11 +41,11 @@ class Dataset_adni(data.Dataset):
         return len(self.age)
 
     def __getitem__(self, index):
-        a = self.lthick
-        b = self.rthick
-        c = self.age
-        d = self.baseline_age
-        e = self.label
-        f = self.subject
-        g = self.timepoint
+        a = self.lthick[index]
+        b = self.rthick[index]
+        c = self.age[index]
+        d = self.baseline_age[index]
+        e = self.label[index]
+        f = self.subject[index]
+        g = self.timepoint[index]
         return a, b, c, d, e, f, g
