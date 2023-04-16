@@ -31,33 +31,31 @@ class AE_adni(nn.Module):
         self.input_dim = input_dim
         self.left_right = left_right
 
+        self.encoder = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, dim_z),
+            nn.Tanh()
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(dim_z, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, self.input_dim),
+        )
+
         self.X, self.Y = None, None
         self.beta, self.b, self.D = None, None, None
         self.U, self.V = None, None
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = None, None, None
-
-    def encoder(self, input):
-        encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 128),
-            nn.Tanh(),
-            nn.Linear(128, 64),
-            nn.Tanh(),
-            nn.Linear(64, dim_z)
-        )
-        z = encoder(input)
-        return z
-
-    def decoder(self, z):
-        decoder = nn.Sequential(
-            nn.Linear(dim_z, 64),
-            nn.Tanh(),
-            nn.Linear(64, 128),
-            nn.Tanh(),
-            nn.Linear(128, self.input_dim),
-            nn.Tanh()
-        )
-        output = decoder(z)
-        return output
 
     def forward(self, image0, image1=None):
         z0 = self.encoder(image0)
@@ -301,28 +299,26 @@ class test_AE(nn.Module):
         self.input_dim = input_dim
         self.left_right = left_right
 
-    def encoder(self, input):
-        encoder = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Linear(self.input_dim, 128),
-            nn.Tanh(),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
             nn.Linear(128, 64),
-            nn.Tanh(),
-            nn.Linear(64, dim_z)
-        )
-        z = encoder(input)
-        return z
-
-    def decoder(self, z):
-        decoder = nn.Sequential(
-            nn.Linear(dim_z, 64),
-            nn.Tanh(),
-            nn.Linear(64, 128),
-            nn.Tanh(),
-            nn.Linear(128, self.input_dim),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, dim_z),
             nn.Tanh()
         )
-        output = decoder(z)
-        return output
+
+        self.decoder = nn.Sequential(
+            nn.Linear(dim_z, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, self.input_dim),
+        )
 
     def forward(self, input):
         z = self.encoder(input)
