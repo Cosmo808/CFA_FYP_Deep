@@ -25,3 +25,27 @@ class Dataset_starmen(data.Dataset):
         w = self.first_age[index]
         a = self.alpha[index]
         return x, y, z, u, v, w, a
+
+
+class Dataset_adni(data.Dataset):
+    def __init__(self, left_thickness, right_thickness, age, baseline_age, label, subject, timepoint):
+        self.lthick = left_thickness
+        self.rthick = right_thickness
+        self.age = age
+        self.baseline_age = baseline_age
+        self.label = label
+        self.subject = subject
+        self.timepoint = timepoint
+
+    def __len__(self):
+        return len(self.age)
+
+    def __getitem__(self, index):
+        a = self.lthick
+        b = self.rthick
+        c = self.age
+        d = self.baseline_age
+        e = self.label
+        f = self.subject
+        g = self.timepoint
+        return a, b, c, d, e, f, g

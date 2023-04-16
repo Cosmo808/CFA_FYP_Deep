@@ -73,17 +73,18 @@ class Data_preprocess_starmen:
 
 
 class Data_preprocess_ADNI:
-    def __init__(self, cuda=0):
-        self.device = torch.device(f"cuda:{cuda}")
+    def __init__(self, ratio=0.25):
+        self.device = torch.device('cuda:0')
+        self.ratio = ratio
 
         # demographic
-        self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
-        self.demo_test = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_test.mat')
+        # self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
+        # self.demo_test = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_test.mat')
 
-        # self.demo_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-        #                             'adni_all_surf_info_regular_longitudinal_random_train.mat')
-        # self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-        #                            'adni_all_surf_info_regular_longitudinal_random_test.mat')
+        self.demo_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                    'adni_all_surf_info_regular_longitudinal_random_train.mat')
+        self.demo_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                   'adni_all_surf_info_regular_longitudinal_random_test.mat')
 
         # thickness
         self.thickness_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
@@ -95,7 +96,7 @@ class Data_preprocess_ADNI:
         self.idx1_train, self.idx1_test = None, None
         self.idx2_train, self.idx2_test = None, None
 
-    def generate_demo_train_test(self):
+    def generate_demo_train_test(self, fold):
         # load data
         age_train = torch.tensor(self.demo_train['Age'], device=self.device).squeeze()
         age_test = torch.tensor(self.demo_test['Age'], device=self.device).squeeze()
@@ -156,28 +157,57 @@ class Data_preprocess_ADNI:
                       'subject': subject_train, 'timepoint': timepoint_train}
         demo_test = {'age': age_test, 'baseline_age': baseline_age_test, 'label': label_test,
                      'subject': subject_test, 'timepoint': timepoint_test}
-        return demo_train, demo_test
 
-    def generate_thick_train_test(self):
+        if fold == 0:
+            return demo_train, demo_test
+        else:
+            return demo_test, demo_train
+
+    def generate_thick_train_test(self, fold):
         if self.idx1_train is None:
-            _, _ = self.generate_demo_train_test()
+            _, _ = self.generate_demo_train_test(fold)
 
         left_thick_train = torch.tensor(self.thickness_train['lthick_regular'], device=self.device).transpose(0, 1)
         right_thick_train = torch.tensor(self.thickness_train['rthick_regular'], device=self.device).transpose(0, 1)
         left_thick_test = torch.tensor(self.thickness_test['lthick_regular'], device=self.device).transpose(0, 1)
         right_thick_test = torch.tensor(self.thickness_test['rthick_regular'], device=self.device).transpose(0, 1)
 
-        left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
-        left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
+        num = int(left_thick_test.size()[-1] * self.ratio)
+
+        left_thick_train, right_thick_train = left_thick_train[self.idx1_train, :num], right_thick_train[self.idx1_train, :num]
+        left_thick_test, right_thick_test = left_thick_test[self.idx2_test, :num], right_thick_test[self.idx2_test, :num]
         thick_train = {'left': left_thick_train, 'right': right_thick_train}
         thick_test = {'left': left_thick_test, 'right': right_thick_test}
-        return thick_train, thick_test
 
+        if fold == 0:
+            return thick_train, thick_test, num
+        else:
+            return thick_test, thick_train, num
 
-if __name__ == '__main__':
-    a = Data_preprocess_ADNI()
+    def generate_XY(self, data):
+        N = data['age'].size()[0]
+        I = len(torch.unique(data['subject']))
 
-    tr, te = a.generate_demo_train_test()
+        delta_age = (data['age'] - data['baseline_age']).view(N, -1)
+        ones = torch.ones(size=delta_age.size(), device=self.device)
+        X = torch.cat((ones, delta_age, data['baseline_age'].view(N, -1)), dim=1)
 
+        Y, old_s, cnt_zero = None, None, 0
+        for i in range(N):
+            if old_s is None:
+                old_s = data['subject'][i]
+            elif old_s != data['subject'][i]:
+                old_s = data['subject'][i]
+                cnt_zero += 1
 
+            zeros0 = torch.zeros(size=[1, 2 * cnt_zero], device=self.device)
+            zeros1 = torch.zeros(size=[1, 2 * (I - 1 - cnt_zero)], device=self.device)
+            yy = X[i, :2].view(1, 2)
+            yy = torch.cat((zeros0, yy, zeros1), dim=1)
 
+            if Y is None:
+                Y = yy
+            else:
+                Y = torch.cat((Y, yy), dim=0)
+
+        return X, Y

@@ -199,8 +199,7 @@ class AE_starmen(nn.Module):
             self.plot_grad_simu_repre(min_, mean_, max_)
             self.plot_loss()
             end_time = time()
-            logger.info(
-                f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
         print('Complete training')
         return
@@ -511,11 +510,11 @@ class AE_starmen(nn.Module):
         plt.savefig('visualization/loss.png', bbox_inches='tight')
         plt.close()
 
-    def generative_parameter_update(self, X, Y, Z, ZU, ZV):
+    def generative_parameter_update(self, Z, ZU, ZV):
         start_time = time()
 
-        X = Variable(X).to(self.device).float()
-        Y = Variable(Y).to(self.device).float()
+        X = Variable(self.X).to(self.device).float()
+        Y = Variable(self.Y).to(self.device).float()
         Z = Variable(Z).to(self.device).float()
         ZU = Variable(ZU).to(self.device).float()
         ZV = Variable(ZV).to(self.device).float()
