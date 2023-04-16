@@ -81,7 +81,7 @@ class AE_adni(nn.Module):
 
     @staticmethod
     def loss(input_, reconstructed):
-        recon_loss = torch.mean((reconstructed - input_) ** 2)
+        recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_loss
 
     def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
@@ -327,7 +327,7 @@ class test_AE(nn.Module):
 
     @staticmethod
     def loss(input_, reconstructed):
-        recon_loss = torch.mean((reconstructed - input_) ** 2)
+        recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         return recon_loss
 
     def train_(self, train_data_loader, a, optimizer, num_epochs):
@@ -353,7 +353,7 @@ class test_AE(nn.Module):
 
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device)
-                reconstructed, z, zu, zv = self.forward(input_)
+                reconstructed = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
                 loss = self_reconstruction_loss
