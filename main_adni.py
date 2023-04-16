@@ -22,8 +22,7 @@ ch.setFormatter(format)
 logger.addHandler(ch)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--cuda0', type=int, default=0)
-parser.add_argument('--cuda1', type=int, default=1)
+parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
 parser.add_argument('--epochs', type=int, default=300)
 parser.add_argument('--bs', type=int, default=128)
@@ -32,8 +31,7 @@ parser.add_argument('--lor', type=int, default=0, help='left (0) or right (1)')
 input_para = parser.parse_args()
 
 # hyperparameter
-device0 = torch.device(f"cuda:{input_para.cuda0}")
-device1 = torch.device(f"cuda:{input_para.cuda1}")
+device = torch.device(f"cuda:{input_para.cuda}")
 fold = input_para.fold
 epochs = input_para.epochs
 lr = 1e-3
@@ -43,7 +41,7 @@ left_right = input_para.lor
 
 
 if __name__ == '__main__':
-    logger.info(f"Device is {device0} and {device1}")
+    logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/2 #####\n")
 
     # make directory
@@ -54,8 +52,7 @@ if __name__ == '__main__':
 
     # load data
     data_generator = Data_preprocess_ADNI(ratio=ratio)
-    data_generator.device0 = device0
-    data_generator.device1 = device1
+    data_generator.device = device
     demo_train, demo_test = data_generator.generate_demo_train_test(fold)
     thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
     logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
@@ -77,11 +74,10 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model_adni.test_AE(input_dim, left_right)
-    autoencoder.device0 = device0
-    autoencoder.device1 = device1
+    autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
-        X, Y = Variable(X).to(device1).float(), Variable(Y).to(device1).float()
+        X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
         autoencoder.X, autoencoder.Y = X, Y
     if hasattr(autoencoder, 'batch_size'):
         autoencoder.batch_size = batch_size
