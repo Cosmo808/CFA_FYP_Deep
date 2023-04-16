@@ -57,8 +57,8 @@ if __name__ == '__main__':
     thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
     logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
-    demo_train.requires_grad, demo_test.requires_grad = False, False
-    thick_train.requires_grad, thick_test.requires_grad = False, False
+    thick_train['left'].requires_grad, thick_test['right'].requires_grad = False, False
+    thick_train['left'].requires_grad, thick_test['right'].requires_grad = False, False
 
     Dataset = Dataset_adni
     train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
