@@ -170,15 +170,14 @@ class Data_preprocess_ADNI:
         if self.idx1_train is None:
             _, _ = self.generate_demo_train_test(fold)
 
-        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'], device=self.device).transpose(0, 1)
-        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'], device=self.device).transpose(0, 1)
-        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'], device=self.device).transpose(0, 1)
-        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'], device=self.device).transpose(0, 1)
+        num = int(self.thickness_train['lthick_regular'].shape[1] * self.ratio)
+        left_thick_train = torch.tensor(self.thickness_train['lthick_regular'][:, num], device=self.device)
+        right_thick_train = torch.tensor(self.thickness_train['rthick_regular'][:, num], device=self.device)
+        left_thick_test = torch.tensor(self.thickness_test['lthick_regular'][:, num], device=self.device)
+        right_thick_test = torch.tensor(self.thickness_test['rthick_regular'][:, num], device=self.device)
 
-        num = int(left_thick_test.size()[-1] * self.ratio)
-
-        left_thick_train, right_thick_train = left_thick_train[self.idx1_train, :num], right_thick_train[self.idx1_train, :num]
-        left_thick_test, right_thick_test = left_thick_test[self.idx2_test, :num], right_thick_test[self.idx2_test, :num]
+        left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
+        left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
         thick_train = {'left': left_thick_train, 'right': right_thick_train}
         thick_test = {'left': left_thick_test, 'right': right_thick_test}
 
