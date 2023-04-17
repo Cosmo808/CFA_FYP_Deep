@@ -341,7 +341,7 @@ class test_AE(nn.Module):
             tloss = 0.0
             nb_batches = 0
 
-            for data in tqdm(train_data_loader):
+            for data in train_data_loader:
                 # data: 0 lthick, 1 rthick, 2 age, 3 baseline_age, 4 label, 5 subject, 6 timepoint
                 image = data[self.left_right]
                 optimizer.zero_grad()
@@ -357,7 +357,7 @@ class test_AE(nn.Module):
                 tloss += float(loss)
                 nb_batches += 1
 
-            epoch_loss = tloss / nb_batches
+            epoch_loss = tloss / nb_batches / self.input_dim
 
             if epoch_loss <= best_loss:
                 es = 0
