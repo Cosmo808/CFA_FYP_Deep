@@ -304,7 +304,7 @@ class test_AE(nn.Module):
             nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Linear(1024, dim_z),
-            nn.ReLU()
+            nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
