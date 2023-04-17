@@ -26,7 +26,7 @@ parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
 parser.add_argument('--epochs', type=int, default=300)
 parser.add_argument('--bs', type=int, default=128)
-parser.add_argument('--ratio', type=float, default=0.25)
+parser.add_argument('--ratio', type=float, default=0.1)
 parser.add_argument('--lor', type=int, default=0, help='left (0) or right (1)')
 input_para = parser.parse_args()
 
