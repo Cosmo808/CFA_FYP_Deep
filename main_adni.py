@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
 parser.add_argument('--epochs', type=int, default=300)
+parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--bs', type=int, default=128)
 parser.add_argument('--ratio', type=float, default=0.1)
 parser.add_argument('--lor', type=int, default=0, help='left (0) or right (1)')
@@ -34,7 +35,7 @@ input_para = parser.parse_args()
 device = torch.device(f"cuda:{input_para.cuda}")
 fold = input_para.fold
 epochs = input_para.epochs
-lr = 1e-3
+lr = input_para.lr
 batch_size = input_para.bs
 ratio = input_para.ratio
 left_right = input_para.lor
