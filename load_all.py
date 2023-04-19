@@ -2,7 +2,9 @@ import torch
 from torch.utils import data
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess_starmen
+from torch.autograd import Variable
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 import numpy as np
 import logging
 import sys
@@ -24,44 +26,51 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
-    data_generator = Data_preprocess_starmen()
     autoencoder = torch.load('model/best_starmen', map_location=device)
     autoencoder.eval()
-    # load train and test data
-    train_data, test_data = data_generator.generate_train_test(0)
-    train_data.requires_grad = False
-    test_data.requires_grad = False
+
+    # load data
+    data_generator = Data_preprocess_starmen()
+    dataset = data_generator.generate_all()
+    dataset.requires_grad = False
 
     Dataset = Dataset_starmen
-    train = Dataset(train_data['path'], train_data['subject'], train_data['baseline_age'], train_data['age'],
-                    train_data['timepoint'], train_data['first_age'])
-    test = Dataset(test_data['path'], test_data['subject'], test_data['baseline_age'], test_data['age'],
-                   test_data['timepoint'], test_data['first_age'])
+    all_data = Dataset(dataset['path'], dataset['subject'], dataset['baseline_age'], dataset['age'],
+                       dataset['timepoint'], dataset['first_age'], dataset['alpha'])
 
-    train_loader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=False,
-                                               num_workers=0, drop_last=False, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=256, shuffle=False,
+    data_loader = torch.utils.data.DataLoader(all_data, batch_size=512, shuffle=False,
                                               num_workers=0, drop_last=False, pin_memory=True)
-    for data in test_loader:
-        image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-        break
-    image = image[:50]
-    recon_img, z, zu, zv = autoencoder.forward(image)
-    global_tra = autoencoder.decoder(zu)
-    indiv_hetero = autoencoder.decoder(zv)
-    fig, axes = plt.subplots(4 * (image.shape[0] // 10), 10, figsize=(20, 8 * (image.shape[0] // 10)))
-    plt.subplots_adjust(wspace=0, hspace=0)
-    for i in range(image.shape[0] // 10):
-        for j in range(10):
-            axes[4 * i][j].matshow(255 * image[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 1][j].matshow(255 * recon_img[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 2][j].matshow(255 * global_tra[10 * i + j][0].cpu().detach().numpy())
-            axes[4 * i + 3][j].matshow(255 * indiv_hetero[10 * i + j][0].cpu().detach().numpy())
-    for axe in axes:
-        for ax in axe:
-            ax.set_xticks([])
-            ax.set_yticks([])
-    plt.savefig('visualization/a.png', bbox_inches='tight')
-    plt.close()
-    for i in range(image.shape[0] // 10):
-        print(test_data['age'].iloc[i * 10:(i + 1) * 10])
+
+    # get Z, ZU, ZV
+    with torch.no_grad():
+        Z, ZU, ZV = None, None, None
+        for data in data_loader:
+            image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
+
+            # self-reconstruction loss
+            input_ = Variable(image).to(device)
+            reconstructed, z, zu, zv = autoencoder.forward(input_)
+            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+
+            # store Z, ZU, ZV
+            if Z is None:
+                Z, ZU, ZV = z, zu, zv
+            else:
+                Z = torch.cat((Z, z), 0)
+                ZU = torch.cat((ZU, zu), 0)
+                ZV = torch.cat((ZV, zv), 0)
+
+    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(Z.cpu().detach().numpy())
+    # plot the result
+    vis_x = vis_data[:, 0]
+    vis_y = vis_data[:, 1]
+
+    fig, ax = plt.subplots(1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+
+    plt.scatter(vis_x, vis_y, marker='.', c=np.array(dataset['subject'][:]))
+    plt.axis('off')
+    plt.colorbar()
+    # plt.clim(-0.5, 9.5)
+    plt.show()

@@ -73,7 +73,7 @@ def get_reconstruction(input_, model_name):
     return reconstruction_loss, zu, zv, z
 
 
-def get_pred_loss(image, model_name, missing_num=6):
+def get_pred_loss(image, model_name, missing_num=7):
     autoencoder.eval()
     num_subject = image.size()[0] // 10
     idx0, idx1 = [], []
@@ -177,7 +177,7 @@ if __name__ == '__main__':
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'Riem_VAE'
+        model_name = 'starmen'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
