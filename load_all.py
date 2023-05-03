@@ -5,6 +5,7 @@ from data_preprocess import Data_preprocess_starmen
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from scipy.stats import norm
 import numpy as np
 import logging
 import sys
@@ -60,8 +61,9 @@ if __name__ == '__main__':
                 ZU = torch.cat((ZU, zu), 0)
                 ZV = torch.cat((ZV, zv), 0)
 
-    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(Z.cpu().detach().numpy())
+    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZV.cpu().detach().numpy())
     # plot the result
+
     vis_x = vis_data[:, 0]
     vis_y = vis_data[:, 1]
 
@@ -69,8 +71,8 @@ if __name__ == '__main__':
     ax.set_yticklabels([])
     ax.set_xticklabels([])
 
-    plt.scatter(vis_x, vis_y, marker='.', c=np.array(dataset['subject'][:]))
+    plt.scatter(vis_x, vis_y, marker='.', c=norm.cdf(np.array(dataset['age'][:])), cmap=plt.cm.get_cmap("rainbow"))
     plt.axis('off')
     plt.colorbar()
-    # plt.clim(-0.5, 9.5)
+    plt.title('t-SNE of ZV space across age')
     plt.show()

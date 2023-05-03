@@ -8,7 +8,7 @@ import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess_starmen
 import argparse
-import model
+import model_starmen
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
