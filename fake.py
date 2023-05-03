@@ -39,10 +39,3 @@ if __name__ == '__main__':
     thick_train['left'].requires_grad, thick_test['right'].requires_grad = False, False
     thick_train['left'].requires_grad, thick_test['right'].requires_grad = False, False
 
-    Dataset = Dataset_adni
-    train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
-                    demo_train['label'], demo_train['subject'], demo_train['timepoint'])
-    test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
-                   demo_test['label'], demo_test['subject'], demo_test['timepoint'])
-
-    print(train[0])
