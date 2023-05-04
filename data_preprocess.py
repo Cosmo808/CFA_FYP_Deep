@@ -235,6 +235,7 @@ class Data_preprocess_ADNI:
                       'subject': subject_train, 'timepoint': timepoint_train}
         demo_test = {'age': age_test, 'label': label_test,
                      'subject': subject_test, 'timepoint': timepoint_test}
+        print("Generating original demographical data finished...")
 
         left_thick_train = self.thickness_train['lthick_regular']
         right_thick_train = self.thickness_train['rthick_regular']
@@ -244,6 +245,6 @@ class Data_preprocess_ADNI:
         thick_train = {'left': torch.tensor(left_thick_train).float(), 'right': torch.tensor(right_thick_train).float()}
         thick_test = {'left': torch.tensor(left_thick_test).float(), 'right': torch.tensor(right_thick_test).float()}
 
-        print("Generating original data finished...")
+        print("Generating original thickness data finished...")
 
         return demo_train, demo_test, thick_train, thick_test
