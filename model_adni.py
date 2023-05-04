@@ -248,7 +248,9 @@ class AE_adni(nn.Module):
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
             temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)
-            self.b = torch.matmul(torch.inverse(temp_mat), self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
+            print(torch.matrix_rank(temp_mat))
+            temp_mat = torch.inverse(temp_mat)
+            self.b = torch.matmul(temp_mat, self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
 
             # update variance parameter
             xbeta = torch.matmul(X, self.beta)
