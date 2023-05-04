@@ -87,10 +87,10 @@ class Data_preprocess_ADNI:
         print('Reading demographical data finished...')
 
         # thickness
-        # self.thickness_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-        #                                  'adni_all_surf_thickness_regular_longitudinal_random_train.mat')
-        # self.thickness_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
-        #                                 'adni_all_surf_thickness_regular_longitudinal_random_test.mat')
+        self.thickness_train = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                         'adni_all_surf_thickness_regular_longitudinal_random_train.mat')
+        self.thickness_test = h5py.File('/projects/students/chaoqiang/VGCNNRNN/DataPrepare/DataOutput/'
+                                        'adni_all_surf_thickness_regular_longitudinal_random_test.mat')
         print('Reading thickness data finished...')
 
         # sort index
@@ -236,14 +236,14 @@ class Data_preprocess_ADNI:
         demo_test = {'age': age_test, 'label': label_test,
                      'subject': subject_test, 'timepoint': timepoint_test}
 
-        # left_thick_train = self.thickness_train['lthick_regular']
-        # right_thick_train = self.thickness_train['rthick_regular']
-        # left_thick_test = self.thickness_test['lthick_regular']
-        # right_thick_test = self.thickness_test['rthick_regular']
-        #
-        # thick_train = {'left': torch.tensor(left_thick_train).float(), 'right': torch.tensor(right_thick_train).float()}
-        # thick_test = {'left': torch.tensor(left_thick_test).float(), 'right': torch.tensor(right_thick_test).float()}
+        left_thick_train = self.thickness_train['lthick_regular']
+        right_thick_train = self.thickness_train['rthick_regular']
+        left_thick_test = self.thickness_test['lthick_regular']
+        right_thick_test = self.thickness_test['rthick_regular']
+
+        thick_train = {'left': torch.tensor(left_thick_train).float(), 'right': torch.tensor(right_thick_train).float()}
+        thick_test = {'left': torch.tensor(left_thick_test).float(), 'right': torch.tensor(right_thick_test).float()}
 
         print("Generating original data finished...")
 
-        return demo_train, demo_test
+        return demo_train, demo_test, thick_train, thick_test
