@@ -28,6 +28,7 @@ class AE_adni(nn.Module):
         self.name = 'AE_adni'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.gamma = 1
+        self.lam = 1
         self.input_dim = input_dim
         self.left_right = left_right
 
@@ -247,8 +248,8 @@ class AE_adni(nn.Module):
 
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
-            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)
-            print(torch.matrix_rank(temp_mat), torch.matrix_rank(yty), torch.matrix_rank(self.D), self.D.size())
+            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)\
+                       + 1e-3 * torch.eye(self.D.size()[0], device=self.device)
             temp_mat = torch.inverse(temp_mat)
             self.b = torch.matmul(temp_mat, self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
 
