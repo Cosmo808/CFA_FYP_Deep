@@ -24,10 +24,10 @@ logger.addHandler(ch)
 parser = argparse.ArgumentParser()
 parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
-parser.add_argument('--epochs', type=int, default=300)
+parser.add_argument('--epochs', type=int, default=500)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--bs', type=int, default=256)
-parser.add_argument('--ratio', type=float, default=0.1)
+parser.add_argument('--ratio', type=float, default=0.2)
 parser.add_argument('--lor', type=int, default=0, help='left (0) or right (1)')
 input_para = parser.parse_args()
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     print('Generating data loader finished...')
 
     # training
-    autoencoder = model_adni.test_AE(input_dim, left_right)
+    autoencoder = model_adni.AE_adni(input_dim, left_right)
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
         X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()

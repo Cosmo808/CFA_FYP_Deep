@@ -73,14 +73,24 @@ if __name__ == '__main__':
 
     lt, rt = thick['left'], thick['right']
     CN = CN.view(1, -1).squeeze().numpy()
-    MCI = MCI.view(1, -1).squeeze().numpy()
+    MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
     AD = AD.view(1, -1).squeeze().numpy()
-    lt_CN, lt_MCI, lt_AD = lt[CN].squeeze(), lt[MCI].squeeze(), lt[AD].squeeze()
+    lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
     avg_lt_CN = np.zeros(shape=[len(aa_CN), lt_CN.shape[1]])
     avg_lt_MCI = np.zeros(shape=[len(aa_MCI), lt_MCI.shape[1]])
     avg_lt_AD = np.zeros(shape=[len(aa_AD), lt_AD.shape[1]])
 
     for i, aa in enumerate(aa_CN):
         aa = aa.view(1, -1).squeeze().numpy()
-        avg = np.sum(lt_CN[aa], axis=0)
+        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
         avg_lt_CN[i] = avg
+
+    for i, aa in enumerate(aa_MCI):
+        aa = aa.view(1, -1).squeeze().numpy()
+        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        avg_lt_MCI[i] = avg
+
+    for i, aa in enumerate(aa_AD):
+        aa = aa.view(1, -1).squeeze().numpy()
+        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        avg_lt_AD[i] = avg
