@@ -28,6 +28,7 @@ parser.add_argument('--epochs', type=int, default=500)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--bs', type=int, default=256)
 parser.add_argument('--ratio', type=float, default=0.2)
+parser.add_argument('--label', type=int, default=-1)
 parser.add_argument('--lor', type=int, default=0, help='left (0) or right (1)')
 input_para = parser.parse_args()
 
@@ -38,6 +39,7 @@ epochs = input_para.epochs
 lr = input_para.lr
 batch_size = input_para.bs
 ratio = input_para.ratio
+label = input_para.label
 left_right = input_para.lor
 
 
@@ -52,7 +54,7 @@ if __name__ == '__main__':
         os.mkdir('visualization')
 
     # load data
-    data_generator = Data_preprocess_ADNI(ratio=ratio, label=0)
+    data_generator = Data_preprocess_ADNI(ratio=ratio, label=label)
     data_generator.device = device
     demo_train, demo_test = data_generator.generate_demo_train_test(fold)
     thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
