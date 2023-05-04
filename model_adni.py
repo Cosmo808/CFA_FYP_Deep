@@ -18,7 +18,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-dim_z = 64
+dim_z = 32
 
 
 class AE_adni(nn.Module):
@@ -235,47 +235,47 @@ class AE_adni(nn.Module):
         xt_zu = torch.matmul(xt, ZU)
         yt_zv = torch.matmul(yt, ZV)
 
-        for epoch in range(5):
-            # updata beta and b
-            H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
-            H_inv = torch.inverse(H)
-            xt_hi_x = torch.matmul(torch.matmul(xt, H_inv), X)
-            xt_hi_z = torch.matmul(torch.matmul(xt, H_inv), Z)
-            mat0 = xt_hi_x + 1 / self.sigma1_2 * xtx
-            mat1 = xt_hi_z + 1 / self.sigma1_2 * xt_zu
-            self.beta = torch.matmul(torch.inverse(mat0), mat1)
 
-            xbeta = torch.matmul(X, self.beta)
-            yt_z_xbeta = torch.matmul(yt, Z - xbeta)
-            self.b = torch.matmul(
-                torch.inverse((self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
-                self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv
-            )
+        # updata beta and b
+        H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
+        H_inv = torch.inverse(H)
+        xt_hi_x = torch.matmul(torch.matmul(xt, H_inv), X)
+        xt_hi_z = torch.matmul(torch.matmul(xt, H_inv), Z)
+        mat0 = xt_hi_x + 1 / self.sigma1_2 * xtx
+        mat1 = xt_hi_z + 1 / self.sigma1_2 * xt_zu
+        self.beta = torch.matmul(torch.inverse(mat0), mat1)
 
-            # update variance parameter
-            xbeta = torch.matmul(X, self.beta)
-            yb = torch.matmul(Y, self.b)
-            self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
-            # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+        xbeta = torch.matmul(X, self.beta)
+        yt_z_xbeta = torch.matmul(yt, Z - xbeta)
+        self.b = torch.matmul(
+            torch.inverse((self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)),
+            self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv
+        )
 
-            for i in range(1):
-                dbbd = torch.matmul(torch.inverse(self.D),
-                                    torch.matmul(self.b, torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D))))
-                grad_d = -1 / 2 * (dim_z * torch.inverse(self.D) - dbbd)
-                self.D = self.D + 1e-5 * grad_d
+        # update variance parameter
+        xbeta = torch.matmul(X, self.beta)
+        yb = torch.matmul(Y, self.b)
+        self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
+        # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
+        self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
-            # update U and V
-            zt_xbeta = torch.matmul(zt, torch.matmul(X, self.beta))
-            zt_yb = torch.matmul(zt, torch.matmul(Y, self.b))
-            for i in range(50):
-                vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
-                uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
-                self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
-                self.V = torch.matmul(torch.inverse(ztz + self.sigma2_2 * self.lam * uut), zt_yb)
+        for i in range(1):
+            dbbd = torch.matmul(torch.inverse(self.D),
+                                torch.matmul(self.b, torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D))))
+            grad_d = -1 / 2 * (dim_z * torch.inverse(self.D) - dbbd)
+            self.D = self.D + 1e-5 * grad_d
 
-            xt_zu = torch.matmul(xt, torch.matmul(Z, self.U))
-            yt_zv = torch.matmul(yt, torch.matmul(Z, self.V))
+        # update U and V
+        zt_xbeta = torch.matmul(zt, torch.matmul(X, self.beta))
+        zt_yb = torch.matmul(zt, torch.matmul(Y, self.b))
+        for i in range(50):
+            vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
+            uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
+            self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
+            self.V = torch.matmul(torch.inverse(ztz + self.sigma2_2 * self.lam * uut), zt_yb)
+
+        xt_zu = torch.matmul(xt, torch.matmul(Z, self.U))
+        yt_zv = torch.matmul(yt, torch.matmul(Z, self.V))
 
         bt_dinv_b = torch.matmul(torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D)), self.b)
         log_pb = -1 / 2 * (dim_z * torch.log(torch.det(self.D)) + torch.trace(bt_dinv_b))
