@@ -178,8 +178,8 @@ class Data_preprocess_ADNI:
         print('Start sorting index...')
         left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
         left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
-        thick_train = {'left': torch.tensor(left_thick_train).float(), 'right': torch.tensor(right_thick_train).float()}
-        thick_test = {'left': torch.tensor(left_thick_test).float(), 'right': torch.tensor(right_thick_test).float()}
+        thick_train = {'left': left_thick_train, 'right': right_thick_train}
+        thick_test = {'left': left_thick_test, 'right': right_thick_test}
 
         print('Generating thickness data finished...')
         if fold == 0:
