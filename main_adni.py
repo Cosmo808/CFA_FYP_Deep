@@ -55,7 +55,6 @@ if __name__ == '__main__':
 
     # load data
     data_generator = Data_preprocess_ADNI(ratio=ratio, label=label)
-    data_generator.device = device
     demo_train, demo_test = data_generator.generate_demo_train_test(fold)
     thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
     logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
@@ -74,6 +73,7 @@ if __name__ == '__main__':
 
     # training
     autoencoder = model_adni.AE_adni(input_dim, left_right)
+    autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
         X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
