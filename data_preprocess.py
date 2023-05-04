@@ -73,8 +73,9 @@ class Data_preprocess_starmen:
 
 
 class Data_preprocess_ADNI:
-    def __init__(self, ratio=0.25):
+    def __init__(self, ratio=0.25, label=-1):
         self.ratio = ratio
+        self.label = label
 
         # demographic
         self.demo_train = h5py.File('./ADNI/adni_all_surf_info_regular_longitudinal_random_train.mat')
@@ -94,6 +95,7 @@ class Data_preprocess_ADNI:
         print('Reading thickness data finished...')
 
         # sort index
+        self.label_idx_train, self.label_idx_test = None, None
         self.idx1_train, self.idx1_test = None, None
         self.idx2_train, self.idx2_test = None, None
 
@@ -111,6 +113,22 @@ class Data_preprocess_ADNI:
         with open('ADNI/subject_test.csv', 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             subject_test = torch.tensor([[int(cell[:3] + cell[6:]) for cell in row] for row in csvreader]).squeeze()
+
+        # select label
+        if self.label != -1:
+            if self.label == 0:
+                self.label_idx_train = torch.nonzero(label_train == 0)
+                self.label_idx_test = torch.nonzero(label_test == 0)
+            if self.label == 1:
+                self.label_idx_train = torch.cat((torch.nonzero(label_train == 1), torch.nonzero(label_train == 2)), dim=0)
+                self.label_idx_test = torch.cat((torch.nonzero(label_test == 1), torch.nonzero(label_test == 2)), dim=0)
+            if self.label == 2:
+                self.label_idx_train = torch.nonzero(label_train == 3)
+                self.label_idx_test = torch.nonzero(label_test == 3)
+            age_train, age_test = age_train[self.label_idx_train], age_test[self.label_idx_test]
+            label_train, label_test = label_train[self.label_idx_train], label_test[self.label_idx_test]
+            timepoint_train, timepoint_test = timepoint_train[self.label_idx_train], timepoint_test[self.label_idx_test]
+            subject_train, subject_test = subject_train[self.label_idx_train], subject_test[self.label_idx_test]
 
         # get sort data index
         idx1_train, idx1_test = timepoint_train.sort()[1], timepoint_test.sort()[1]
@@ -174,6 +192,12 @@ class Data_preprocess_ADNI:
         right_thick_train = self.thickness_train['rthick_regular'][:, :num]
         left_thick_test = self.thickness_test['lthick_regular'][:, :num]
         right_thick_test = self.thickness_test['rthick_regular'][:, :num]
+
+        if self.label != -1:
+            label_idx_train = self.label_idx_train.view(1, -1).squeeze().numpy()
+            label_idx_test = self.label_idx_test.view(1, -1).squeeze().numpy()
+            left_thick_train, left_thick_test = left_thick_train[label_idx_train], left_thick_test[label_idx_test]
+            right_thick_train, right_thick_test = right_thick_train[label_idx_train], right_thick_test[label_idx_test]
 
         print('Start sorting index...')
         left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]

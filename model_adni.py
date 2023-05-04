@@ -18,7 +18,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-dim_z = 16
+dim_z = 64
 
 
 class AE_adni(nn.Module):
