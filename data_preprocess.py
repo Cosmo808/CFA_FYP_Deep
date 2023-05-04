@@ -242,8 +242,8 @@ class Data_preprocess_ADNI:
         left_thick_test = self.thickness_test['lthick_regular']
         right_thick_test = self.thickness_test['rthick_regular']
 
-        thick_train = {'left': torch.tensor(left_thick_train).float(), 'right': torch.tensor(right_thick_train).float()}
-        thick_test = {'left': torch.tensor(left_thick_test).float(), 'right': torch.tensor(right_thick_test).float()}
+        thick_train = {'left': left_thick_train, 'right': right_thick_train}
+        thick_test = {'left': left_thick_test, 'right': right_thick_test}
 
         print("Generating original thickness data finished...")
 
