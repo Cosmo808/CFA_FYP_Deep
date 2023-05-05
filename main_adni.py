@@ -86,7 +86,9 @@ if __name__ == '__main__':
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
     autoencoder.train_(train_loader, test_loader, optimizer=optimizer, num_epochs=epochs)
-    torch.save(autoencoder, 'model/{}_fold_{}'.format(fold, autoencoder.name))
-    logger.info(f"##### Fold {fold + 1}/2 finished #####\n")
+
     left_right = 'left' if left_right == 0 else 'right'
-    logger.info("Model saved in model/{}_fold_{}_{}".format(fold, left_right, autoencoder.name))
+    label = 'CN' if label == 0 else 'MCI' if label == 1 else 'AD' if label == 2 else 'all'
+    torch.save(autoencoder, 'model/{}_fold_{}_{}_{}'.format(fold, label, left_right, autoencoder.name))
+    logger.info(f'##### Fold {fold + 1}/2 finished #####\n')
+    logger.info('Model saved in model/{}_fold_{}_{}_{}'.format(fold, label, left_right, autoencoder.name))
