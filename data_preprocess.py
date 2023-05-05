@@ -73,8 +73,8 @@ class Data_preprocess_starmen:
 
 
 class Data_preprocess_ADNI:
-    def __init__(self, ratio=0.25, label=-1):
-        self.ratio = ratio
+    def __init__(self, number=0.25, label=-1):
+        self.number = number
         self.label = label
 
         # demographic
@@ -187,11 +187,10 @@ class Data_preprocess_ADNI:
         if self.idx1_train is None:
             _, _ = self.generate_demo_train_test(fold)
 
-        num = int(self.thickness_train['lthick_regular'].shape[1] * self.ratio)
-        left_thick_train = self.thickness_train['lthick_regular'][:, :num]
-        right_thick_train = self.thickness_train['rthick_regular'][:, :num]
-        left_thick_test = self.thickness_test['lthick_regular'][:, :num]
-        right_thick_test = self.thickness_test['rthick_regular'][:, :num]
+        left_thick_train = self.thickness_train['lthick_regular'][:, :self.number]
+        right_thick_train = self.thickness_train['rthick_regular'][:, :self.number]
+        left_thick_test = self.thickness_test['lthick_regular'][:, :self.number]
+        right_thick_test = self.thickness_test['rthick_regular'][:, :self.number]
 
         if self.label != -1:
             label_idx_train = self.label_idx_train.view(1, -1).squeeze().numpy()
@@ -207,9 +206,9 @@ class Data_preprocess_ADNI:
 
         print('Generating thickness data finished...')
         if fold == 0:
-            return thick_train, thick_test, num
+            return thick_train, thick_test, self.number
         else:
-            return thick_test, thick_train, num
+            return thick_test, thick_train, self.number
 
     def generate_XY(self, data):
         N = data['age'].size()[0]

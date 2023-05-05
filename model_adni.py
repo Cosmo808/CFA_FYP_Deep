@@ -18,7 +18,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-dim_z = 32
+dim_z = 16
 
 
 class AE_adni(nn.Module):
@@ -37,7 +37,7 @@ class AE_adni(nn.Module):
             nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Linear(1024, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Tanh(),
         )
 
         self.decoder = nn.Sequential(
@@ -72,7 +72,7 @@ class AE_adni(nn.Module):
         self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1, 0.5, 1
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 0.5, 0.25
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
@@ -143,11 +143,11 @@ class AE_adni(nn.Module):
                 nb_batches += 1
 
             # comply with generative model
-            sort_index1 = s_tp[:, 1].sort()[1]
-            sorted_s_tp = s_tp[sort_index1]
-            sort_index2 = sorted_s_tp[:, 0].sort()[1]
-            Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
-            Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
+            # sort_index1 = s_tp[:, 1].sort()[1]
+            # sorted_s_tp = s_tp[sort_index1]
+            # sort_index2 = sorted_s_tp[:, 0].sort()[1]
+            # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
+            # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
             self.generative_parameter_update(Z, ZU, ZV)
 
             epoch_loss = tloss / nb_batches
@@ -250,16 +250,16 @@ class AE_adni(nn.Module):
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
             temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)\
-                       + 1e-3 * torch.eye(self.D.size()[0], device=self.device)
+                       + 1e-5 * torch.eye(self.D.size()[0], device=self.device)
             temp_mat = torch.inverse(temp_mat)
             self.b = torch.matmul(temp_mat, self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
 
             # update variance parameter
             xbeta = torch.matmul(X, self.beta)
             yb = torch.matmul(Y, self.b)
-            self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
+            # self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
             for i in range(1):
                 dbbd = torch.matmul(torch.inverse(self.D),
@@ -301,7 +301,7 @@ class test_AE(nn.Module):
             nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Linear(1024, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Tanh(),
         )
 
         self.decoder = nn.Sequential(
@@ -319,7 +319,7 @@ class test_AE(nn.Module):
 
     @staticmethod
     def loss(input_, reconstructed):
-        recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        recon_loss = torch.mean((reconstructed - input_) ** 2)
         return recon_loss
 
     def train_(self, train_data_loader, a, optimizer, num_epochs):
@@ -354,7 +354,7 @@ class test_AE(nn.Module):
                 tloss += float(loss)
                 nb_batches += 1
 
-            epoch_loss = tloss / nb_batches / self.input_dim
+            epoch_loss = tloss / nb_batches
 
             if epoch_loss <= best_loss:
                 es = 0
