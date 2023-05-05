@@ -345,7 +345,7 @@ class test_AE(nn.Module):
 
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device)
-                reconstructed = self.forward(input_)
+                reconstructed = self.forward(input_).float()
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
                 loss = self_reconstruction_loss
