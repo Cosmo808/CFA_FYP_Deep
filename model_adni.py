@@ -344,8 +344,8 @@ class test_AE(nn.Module):
                 optimizer.zero_grad()
 
                 # self-reconstruction loss
-                input_ = Variable(image).to(self.device)
-                reconstructed = self.forward(input_).float()
+                input_ = Variable(image).to(self.device).float()
+                reconstructed = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
                 loss = self_reconstruction_loss
