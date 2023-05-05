@@ -148,7 +148,8 @@ class AE_adni(nn.Module):
             # sort_index2 = sorted_s_tp[:, 0].sort()[1]
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
-            self.generative_parameter_update(Z, ZU, ZV)
+            if epoch > 50:
+                self.generative_parameter_update(Z, ZU, ZV)
 
             epoch_loss = tloss / nb_batches
             test_loss = self.evaluate(test_data_loader)
@@ -297,18 +298,25 @@ class test_AE(nn.Module):
         self.left_right = left_right
 
         self.encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(self.input_dim, 8192),
+            nn.BatchNorm1d(8192),
             nn.ReLU(),
-            nn.Linear(4096, dim_z),
+            nn.Linear(8192, 1024),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(),
+            nn.Linear(1024, dim_z),
             nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(dim_z, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(dim_z, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
-            nn.Linear(4096, self.input_dim),
+            nn.Linear(1024, 8192),
+            nn.BatchNorm1d(8192),
+            nn.ReLU(),
+            nn.Linear(8192, self.input_dim),
+            nn.BatchNorm1d(self.input_dim),
             nn.ReLU()
         )
 
