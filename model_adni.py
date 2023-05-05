@@ -77,7 +77,8 @@ class AE_adni(nn.Module):
 
     @staticmethod
     def loss(input_, reconstructed):
-        recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        # recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        recon_loss = torch.mean((reconstructed - input_) ** 2)
         return recon_loss
 
     def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
@@ -127,8 +128,8 @@ class AE_adni(nn.Module):
                 image0 = image[index0]
                 image1 = image[index1]
                 if index0:
-                    input0_ = Variable(image0).to(self.device)
-                    input1_ = Variable(image1).to(self.device)
+                    input0_ = Variable(image0).to(self.device).float()
+                    input1_ = Variable(image1).to(self.device).float()
                     reconstructed = self.forward(input0_, input1_)
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
@@ -174,7 +175,7 @@ class AE_adni(nn.Module):
                 image = data[self.left_right]
 
                 # self-reconstruction loss
-                input_ = Variable(image).to(self.device)
+                input_ = Variable(image).to(self.device).float()
                 reconstructed, z, zu, zv = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
 
@@ -185,8 +186,8 @@ class AE_adni(nn.Module):
                 image0 = image[index0]
                 image1 = image[index1]
                 if index0:
-                    input0_ = Variable(image0).to(self.device)
-                    input1_ = Variable(image1).to(self.device)
+                    input0_ = Variable(image0).to(self.device).float()
+                    input1_ = Variable(image1).to(self.device).float()
                     reconstructed = self.forward(input0_, input1_)
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
