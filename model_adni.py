@@ -149,7 +149,9 @@ class AE_adni(nn.Module):
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
             if epoch > 50:
+                print('Start aligning...')
                 self.generative_parameter_update(Z, ZU, ZV)
+                print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
             # test_loss = self.evaluate(test_data_loader)
