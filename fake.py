@@ -8,6 +8,7 @@ import sys
 import os
 from dataset import Dataset_adni
 from data_preprocess import Data_preprocess_ADNI
+import scipy
 import argparse
 import model_adni
 
@@ -94,3 +95,6 @@ if __name__ == '__main__':
         aa = aa.view(1, -1).squeeze().numpy()
         avg = np.sum(lt_CN[aa], axis=0) / len(aa)
         avg_lt_AD[i] = avg
+
+    lt_mat = {'CN': avg_lt_CN, 'MCI': avg_lt_MCI, 'AD': avg_lt_AD}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg.mat', lt_mat)
