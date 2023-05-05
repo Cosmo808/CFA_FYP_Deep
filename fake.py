@@ -83,17 +83,26 @@ if __name__ == '__main__':
 
     for i, aa in enumerate(aa_CN):
         aa = aa.view(1, -1).squeeze().numpy()
-        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        try:
+            avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_CN[aa]
         avg_lt_CN[i] = avg
 
     for i, aa in enumerate(aa_MCI):
         aa = aa.view(1, -1).squeeze().numpy()
-        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        try:
+            avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_CN[aa]
         avg_lt_MCI[i] = avg
 
     for i, aa in enumerate(aa_AD):
         aa = aa.view(1, -1).squeeze().numpy()
-        avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        try:
+            avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_CN[aa]
         avg_lt_AD[i] = avg
 
     lt_mat = {'CN': avg_lt_CN, 'MCI': avg_lt_MCI, 'AD': avg_lt_AD}
