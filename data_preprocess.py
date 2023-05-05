@@ -125,10 +125,10 @@ class Data_preprocess_ADNI:
             if self.label == 2:
                 self.label_idx_train = torch.nonzero(label_train == 3)
                 self.label_idx_test = torch.nonzero(label_test == 3)
-            age_train, age_test = age_train[self.label_idx_train], age_test[self.label_idx_test]
-            label_train, label_test = label_train[self.label_idx_train], label_test[self.label_idx_test]
-            timepoint_train, timepoint_test = timepoint_train[self.label_idx_train], timepoint_test[self.label_idx_test]
-            subject_train, subject_test = subject_train[self.label_idx_train], subject_test[self.label_idx_test]
+            age_train, age_test = age_train[self.label_idx_train].squeeze(), age_test[self.label_idx_test].squeeze()
+            label_train, label_test = label_train[self.label_idx_train].squeeze(), label_test[self.label_idx_test].squeeze()
+            timepoint_train, timepoint_test = timepoint_train[self.label_idx_train].squeeze(), timepoint_test[self.label_idx_test].squeeze()
+            subject_train, subject_test = subject_train[self.label_idx_train].squeeze(), subject_test[self.label_idx_test].squeeze()
 
         # get sort data index
         idx1_train, idx1_test = timepoint_train.sort()[1], timepoint_test.sort()[1]

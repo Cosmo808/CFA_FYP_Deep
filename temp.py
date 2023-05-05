@@ -50,7 +50,7 @@ if __name__ == '__main__':
     all_data = Dataset(dataset['path'], dataset['subject'], dataset['baseline_age'], dataset['age'],
                        dataset['timepoint'], dataset['first_age'], dataset['alpha'])
 
-    data_loader = torch.utils.data.DataLoader(all_data, batch_size=300, shuffle=False,
+    data_loader = torch.utils.data.DataLoader(all_data, batch_size=128, shuffle=False,
                                               num_workers=0, drop_last=False, pin_memory=True)
 
     for data in data_loader:
@@ -61,14 +61,13 @@ if __name__ == '__main__':
         print(index0)
         image0 = image[index0]
         image1 = image[index1]
+        break
 
-    fig, axes = plt.subplots(1, 9, figsize=(18, 1))
+    fig, axes = plt.subplots(1, len(index0), figsize=(len(index0) * 2, 1))
     plt.subplots_adjust(wspace=0, hspace=0)
 
     # image = image[10:20]
-    for i in range(10):
-        if i == 0:
-            continue
+    for i in range(len(index0)):
         grad_img = image0[i] - image1[i]
         axes[i - 1].matshow(grad_img[0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
                             norm=matplotlib.colors.CenteredNorm())
