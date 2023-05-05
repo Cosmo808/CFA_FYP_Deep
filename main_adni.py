@@ -72,7 +72,7 @@ if __name__ == '__main__':
     print('Generating data loader finished...')
 
     # training
-    autoencoder = model_adni.test_AE(input_dim, left_right)
+    autoencoder = model_adni.AE_adni(input_dim, left_right)
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
