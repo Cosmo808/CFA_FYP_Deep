@@ -155,7 +155,7 @@ class AE_adni(nn.Module):
 
             epoch_loss = tloss / nb_batches
             # test_loss = self.evaluate(test_data_loader)
-            test_loss = 0
+            test_loss = 0.0
             if epoch_loss <= best_loss:
                 es = 0
                 best_loss = epoch_loss
