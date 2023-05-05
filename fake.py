@@ -32,7 +32,7 @@ if __name__ == '__main__':
     logger.info(f"Device is {device}")
 
     # load data
-    data_generator = Data_preprocess_ADNI(ratio=ratio)
+    data_generator = Data_preprocess_ADNI(number=163842)
     data_generator.device = device
     # demo_train, demo_test = data_generator.generate_demo_train_test(fold)
     # thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
