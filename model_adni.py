@@ -297,18 +297,18 @@ class test_AE(nn.Module):
         self.left_right = left_right
 
         self.encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(self.input_dim, 4096),
+            nn.BatchNorm1d(4096),
             nn.ReLU(),
-            nn.Linear(1024, dim_z),
+            nn.Linear(4096, dim_z),
             nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(dim_z, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(dim_z, 4096),
+            nn.BatchNorm1d(4096),
             nn.ReLU(),
-            nn.Linear(1024, self.input_dim),
+            nn.Linear(4096, self.input_dim),
             nn.ReLU()
         )
 
