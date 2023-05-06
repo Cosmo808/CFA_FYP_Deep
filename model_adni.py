@@ -72,7 +72,7 @@ class AE_adni(nn.Module):
         self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 1.0, 0.25
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 0.5, 0.25
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
@@ -262,7 +262,7 @@ class AE_adni(nn.Module):
             yb = torch.matmul(Y, self.b)
             self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
             for i in range(1):
                 dbbd = torch.matmul(torch.inverse(self.D),
