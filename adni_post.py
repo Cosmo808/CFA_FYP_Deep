@@ -113,5 +113,5 @@ if __name__ == '__main__':
     input_AD = Variable(torch.tensor(lt_AD)).to(device).float()
     reconstructed_AD, z_AD, zu_AD, zv_AD = autoencoder.forward(input_AD)
 
-    lt_global_trajectory = {'CN': zu_CN, 'MCI': zu_MCI, 'AD': zu_AD}
+    lt_global_trajectory = {'CN': zu_CN.cpu().detach().numpy(), 'MCI': zu_MCI.cpu().detach().numpy(), 'AD': zu_AD.cpu().detach().numpy()}
     scipy.io.savemat('/home/ming/Desktop/lt_global_trajectory.mat', lt_global_trajectory)
