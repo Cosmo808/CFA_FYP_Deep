@@ -72,7 +72,7 @@ class AE_adni(nn.Module):
         self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 1.0, 0.25
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.5, 1.0, 0.5
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
@@ -154,8 +154,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            # test_loss = self.evaluate(test_data_loader)
-            test_loss = 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch == num_epochs - 1 else 0.0
             if epoch_loss <= best_loss:
                 es = 0
                 best_loss = epoch_loss
@@ -402,6 +401,6 @@ class Classifier(nn.Module):
 
         test_data = Variable(test_data).to(self.device).float()
         test_outputs = self.forward(test_data)
-        predicted_class = torch.argmax(test_outputs).item().view(test_target_labels.size())
-        accuracy = 1 - np.count_nonzero(predicted_class.cpu().detach().numpy() - test_target_labels) / test_data.size()[0]
+        predicted_class = torch.argmax(test_outputs).item()
+        accuracy = 1 - np.count_nonzero(predicted_class - test_target_labels) / test_data.size()[0]
         print(f"Prediction accuracy on test dataset is {accuracy:.3}")
