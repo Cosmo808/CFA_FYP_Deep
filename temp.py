@@ -180,3 +180,22 @@ if __name__ == '__main__':
 
     lt_global_trajectory = {'CN': CN, 'MCI': MCI, 'AD': AD}
     scipy.io.savemat('/home/ming/Desktop/lt_global_trajectory.mat', lt_global_trajectory)
+
+    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZU.cpu().detach().numpy())
+    # plot the result
+
+    vis_x = vis_data[:, 0]
+    vis_y = vis_data[:, 1]
+
+    fig, ax = plt.subplots(1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+
+    label = demo_train['label']
+    label[label == 2] = 1
+    scatter = plt.scatter(vis_x, vis_y, marker='.', c=label, cmap=plt.cm.get_cmap("rainbow"))
+    plt.legend(handles=scatter.legend_elements()[0], labels=['CN', 'MCI', 'AD'])
+    plt.axis('off')
+    plt.colorbar()
+    plt.title('t-SNE of ZV space across age')
+    plt.savefig('/home/ming/Desktop/a.png')

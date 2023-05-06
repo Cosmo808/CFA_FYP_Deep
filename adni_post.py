@@ -75,20 +75,29 @@ if __name__ == '__main__':
                 ZU = torch.cat((ZU, zu), 0)
                 ZV = torch.cat((ZV, zv), 0)
 
-    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZU.cpu().detach().numpy())
-    # plot the result
+    train_ZU, train_ZV = ZU, ZV
 
-    vis_x = vis_data[:, 0]
-    vis_y = vis_data[:, 1]
+    with torch.no_grad():
+        Z, ZU, ZV = None, None, None
+        for data in test_loader:
+            image = data[autoencoder.left_right]
 
-    fig, ax = plt.subplots(1)
-    ax.set_yticklabels([])
-    ax.set_xticklabels([])
+            # self-reconstruction loss
+            input_ = Variable(image).to(device).float()
+            reconstructed, z, zu, zv = autoencoder.forward(input_)
+            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
 
-    demo_train[demo_train == 2] = 1
-    scatter = plt.scatter(vis_x, vis_y, marker='.', c=demo_train['label'], cmap=plt.cm.get_cmap("rainbow"))
-    plt.legend(handles=scatter.legend_elements()[0], labels=['CN', 'MCI', 'AD'])
-    plt.axis('off')
-    plt.colorbar()
-    plt.title('t-SNE of ZV space across age')
-    plt.show()
+            # store Z, ZU, ZV
+            if Z is None:
+                Z, ZU, ZV = z, zu, zv
+            else:
+                Z = torch.cat((Z, z), 0)
+                ZU = torch.cat((ZU, zu), 0)
+                ZV = torch.cat((ZV, zv), 0)
+
+    test_ZU, test_ZV = ZU, ZV
+
+    classifier = model_adni.Classifier(target_num=3)
+    optimizer_fn = optim.Adam
+    optimizer = optimizer_fn(autoencoder.parameters(), lr=1e-3)
+    classifier.train_(train_ZV, demo_train['label'], test_ZV, demo_test['label'], optimizer=optimizer, num_epochs=200)

@@ -367,3 +367,40 @@ class test_AE(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train): {epoch_loss:.4} take {end_time - start_time:.3} seconds\n")
+
+
+class Classifier(nn.Module):
+    def __init__(self, target_num):
+        super(Classifier, self).__init__()
+        self.device = torch.device('cuda:0')
+
+        self.fc1 = nn.Linear(dim_z, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, target_num)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+    def train_(self, input_data, target_labels, test_data, test_target_labels, optimizer, num_epochs):
+        self.to(self.device)
+
+        for epoch in range(num_epochs):
+            optimizer.zero_grad()
+            input_data = Variable(input_data).to(self.device).float()
+            outputs = self.forward(input_data)
+            loss = nn.CrossEntropyLoss(outputs, target_labels)
+            loss.backward()
+            optimizer.step()
+
+            print(f"Epoch {epoch + 1} Loss: {loss.item()}")
+
+        print('Training finished...')
+
+        test_data = Variable(test_data).to(self.device).float()
+        test_outputs = self.forward(test_data)
+        predicted_class = torch.argmax(test_outputs).item().view(test_target_labels.size())
+        accuracy = 1 - np.count_nonzero((predicted_class - test_target_labels).cpu().detach().numpy()) / test_data.size()[0]
+        print(f"Prediction accuracy on test dataset is {accuracy:.3}")
