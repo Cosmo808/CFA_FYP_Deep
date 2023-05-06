@@ -97,15 +97,15 @@ if __name__ == '__main__':
                     ZV = torch.cat((ZV, zv), 0)
 
         test_ZU, test_ZV = ZU, ZV
-        torch.save(train_ZU, './train_ZU')
-        torch.save(train_ZV, './train_ZV')
-        torch.save(test_ZU, './test_ZU')
-        torch.save(test_ZV, './test_ZV')
+        torch.save(train_ZU, './data/train_ZU')
+        torch.save(train_ZV, './data/train_ZV')
+        torch.save(test_ZU, './data/test_ZU')
+        torch.save(test_ZV, './data/test_ZV')
     else:
-        train_ZU = torch.load('./train_ZU')
-        train_ZV = torch.load('./train_ZV')
-        test_ZU = torch.load('./test_ZU')
-        test_ZV = torch.load('./test_ZV')
+        train_ZU = torch.load('./data/train_ZU')
+        train_ZV = torch.load('./data/train_ZV')
+        test_ZU = torch.load('./data/test_ZU')
+        test_ZV = torch.load('./data/test_ZV')
 
     classifier = model_adni.Classifier(target_num=3)
     optimizer_fn = optim.Adam
