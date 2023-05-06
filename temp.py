@@ -23,60 +23,84 @@ logger.addHandler(ch)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def generate_sample(baseline_age, age):
-    sample = []
-    for index, base_a in enumerate(baseline_age):
-        match_ba = [i for i, ba in enumerate(baseline_age) if 1e-5 < np.abs(ba - base_a) <= 0.05]
-        if match_ba:
-            sample.append([index, match_ba])
-    result = []
-    for index, match in sample:
-        match_age = [i for i in match if 1e-5 < np.abs(age[i] - age[index]) <= 0.05]
-        for ind in match_age:
-            result.append([index, ind])
-    index0 = [idx[0] for idx in result]
-    index1 = [idx[1] for idx in result]
-    return index0, index1
-
 
 if __name__ == '__main__':
 
+    logger.info(f"Device is {device}")
+
     # load data
-    data_generator = Data_preprocess_starmen()
-    dataset = data_generator.generate_all()
-    dataset.requires_grad = False
+    data_generator = Data_preprocess_ADNI(number=163842)
+    data_generator.device = device
+    # demo_train, demo_test = data_generator.generate_demo_train_test(fold)
+    # thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
+    demo_train, demo_test, thick_train, thick_test = data_generator.generate_orig_data()
+    logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
-    Dataset = Dataset_starmen
-    all_data = Dataset(dataset['path'], dataset['subject'], dataset['baseline_age'], dataset['age'],
-                       dataset['timepoint'], dataset['first_age'], dataset['alpha'])
+    demo = demo_train
+    thick = thick_train
+    CN = torch.nonzero(demo['label'] == 0)
+    MCI = torch.cat((torch.nonzero(demo['label'] == 1), torch.nonzero(demo['label'] == 2)), dim=0)
+    AD = torch.nonzero(demo['label'] == 3)
 
-    data_loader = torch.utils.data.DataLoader(all_data, batch_size=128, shuffle=False,
-                                              num_workers=0, drop_last=False, pin_memory=True)
+    age_CN = demo['age'][CN].squeeze()
+    age_MCI = demo['age'][MCI].squeeze()
+    age_AD = demo['age'][AD].squeeze()
 
-    for data in data_loader:
-        image = torch.tensor([[np.load(path)] for path in data[0]], device=device).float()
-        baseline_age = data[2]
-        delta_age = data[3] - baseline_age
-        index0, index1 = generate_sample(baseline_age, delta_age)
-        print(index0)
-        image0 = image[index0]
-        image1 = image[index1]
-        break
+    a_CN = np.round(np.arange(min(age_CN), max(age_CN), 0.1), 1)
+    a_MCI = np.round(np.arange(min(age_MCI), max(age_MCI), 0.1), 1)
+    a_AD = np.round(np.arange(min(age_AD), max(age_AD), 0.1), 1)
 
-    fig, axes = plt.subplots(1, len(index0), figsize=(len(index0) * 2, 1))
-    plt.subplots_adjust(wspace=0, hspace=0)
+    aa_CN, aa_MCI, aa_AD = [], [], []
+    cn_temp, mci_temp, ad_temp = [], [], []
+    i, imax = 0, 10
+    for ac, am, aa in zip(a_CN, a_MCI, a_AD):
+        if i == 0:
+            cn_temp = torch.nonzero(age_CN == ac)
+            mci_temp = torch.nonzero(age_MCI == am)
+            ad_temp = torch.nonzero(age_AD == aa)
+        else:
+            cn_temp = torch.cat((cn_temp, torch.nonzero(age_CN == ac)), dim=0)
+            mci_temp = torch.cat((mci_temp, torch.nonzero(age_MCI == am)), dim=0)
+            ad_temp = torch.cat((ad_temp, torch.nonzero(age_AD == aa)), dim=0)
+        i += 1
+        if i == 10:
+            i = 0
+            aa_CN.append(cn_temp)
+            aa_MCI.append(mci_temp)
+            aa_AD.append(ad_temp)
 
-    # image = image[10:20]
-    for i in range(len(index0)):
-        grad_img = image0[i] - image1[i]
-        axes[i - 1].matshow(grad_img[0].cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
-                            norm=matplotlib.colors.CenteredNorm())
-        fig.colorbar(
-            matplotlib.cm.ScalarMappable(cmap=matplotlib.cm.get_cmap('bwr'), norm=matplotlib.colors.CenteredNorm()),
-            cax=fig.add_axes([0.92, 0.15, 0.01, 0.7]))
+    lt, rt = thick['left'], thick['right']
+    CN = CN.view(1, -1).squeeze().numpy()
+    MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
+    AD = AD.view(1, -1).squeeze().numpy()
+    lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
+    avg_lt_CN = np.zeros(shape=[len(aa_CN), lt_CN.shape[1]])
+    avg_lt_MCI = np.zeros(shape=[len(aa_MCI), lt_MCI.shape[1]])
+    avg_lt_AD = np.zeros(shape=[len(aa_AD), lt_AD.shape[1]])
 
-    for axe in axes:
-        axe.set_xticks([])
-        axe.set_yticks([])
+    for i, aa in enumerate(aa_CN):
+        aa = aa.view(1, -1).squeeze().numpy()
+        try:
+            avg = np.sum(lt_CN[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_CN[aa]
+        avg_lt_CN[i] = avg
 
-    plt.show()
+    for i, aa in enumerate(aa_MCI):
+        aa = aa.view(1, -1).squeeze().numpy()
+        try:
+            avg = np.sum(lt_MCI[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_MCI[aa]
+        avg_lt_MCI[i] = avg
+
+    for i, aa in enumerate(aa_AD):
+        aa = aa.view(1, -1).squeeze().numpy()
+        try:
+            avg = np.sum(lt_AD[aa], axis=0) / len(aa)
+        except TypeError:
+            avg = lt_AD[aa]
+        avg_lt_AD[i] = avg
+
+    lt_mat = {'CN': avg_lt_CN, 'MCI': avg_lt_MCI, 'AD': avg_lt_AD}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg.mat', lt_mat)
