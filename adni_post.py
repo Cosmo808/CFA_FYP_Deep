@@ -85,7 +85,9 @@ if __name__ == '__main__':
     ax.set_yticklabels([])
     ax.set_xticklabels([])
 
-    plt.scatter(vis_x, vis_y, marker='.', c=norm.cdf(demo_train['label']), cmap=plt.cm.get_cmap("rainbow"))
+    demo_train[demo_train == 2] = 1
+    scatter = plt.scatter(vis_x, vis_y, marker='.', c=demo_train['label'], cmap=plt.cm.get_cmap("rainbow"))
+    plt.legend(handles=scatter.legend_elements()[0], labels=['CN', 'MCI', 'AD'])
     plt.axis('off')
     plt.colorbar()
     plt.title('t-SNE of ZV space across age')
