@@ -97,10 +97,10 @@ if __name__ == '__main__':
                     ZV = torch.cat((ZV, zv), 0)
 
         test_ZU, test_ZV = ZU, ZV
-        torch.save('./train_ZU', train_ZU)
-        torch.save('./train_ZV', train_ZV)
-        torch.save('./test_ZU', test_ZU)
-        torch.save('./test_ZV', test_ZV)
+        torch.save(train_ZU, './train_ZU')
+        torch.save(train_ZV, './train_ZV')
+        torch.save(test_ZU, './test_ZU')
+        torch.save(test_ZV, './test_ZV')
     else:
         train_ZU = torch.load('./train_ZU')
         train_ZV = torch.load('./train_ZV')
