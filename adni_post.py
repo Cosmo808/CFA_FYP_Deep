@@ -9,6 +9,9 @@ import os
 from dataset import Dataset_adni
 from data_preprocess import Data_preprocess_ADNI
 import scipy
+from sklearn.manifold import TSNE
+from scipy.stats import norm
+import matplotlib.pyplot as plt
 import argparse
 import model_adni
 
@@ -41,80 +44,49 @@ if __name__ == '__main__':
     thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
     logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
+    Dataset = Dataset_adni
+    train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
+                    demo_train['label'], demo_train['subject'], demo_train['timepoint'])
+    test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
+                   demo_test['label'], demo_test['subject'], demo_test['timepoint'])
+
+    train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=False,
+                                               num_workers=0, drop_last=False)
+    test_loader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False,
+                                              num_workers=0, drop_last=False)
     print('Generating data loader finished...')
 
-    demo = demo_train
-    thick = thick_train
-    CN = torch.nonzero(demo['label'] == 0)
-    MCI = torch.cat((torch.nonzero(demo['label'] == 1), torch.nonzero(demo['label'] == 2)), dim=0)
-    AD = torch.nonzero(demo['label'] == 3)
+    # get Z, ZU, ZV
+    with torch.no_grad():
+        Z, ZU, ZV = None, None, None
+        for data in train_loader:
+            image = data[autoencoder.left_right]
 
-    age_CN = demo['age'][CN].squeeze()
-    age_MCI = demo['age'][MCI].squeeze()
-    age_AD = demo['age'][AD].squeeze()
+            # self-reconstruction loss
+            input_ = Variable(image).to(device).float()
+            reconstructed, z, zu, zv = autoencoder.forward(input_)
+            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
 
-    a_CN = np.round(np.arange(min(age_CN), max(age_CN), 0.1), 1)
-    a_MCI = np.round(np.arange(min(age_MCI), max(age_MCI), 0.1), 1)
-    a_AD = np.round(np.arange(min(age_AD), max(age_AD), 0.1), 1)
+            # store Z, ZU, ZV
+            if Z is None:
+                Z, ZU, ZV = z, zu, zv
+            else:
+                Z = torch.cat((Z, z), 0)
+                ZU = torch.cat((ZU, zu), 0)
+                ZV = torch.cat((ZV, zv), 0)
 
-    aa_CN, aa_MCI, aa_AD = [], [], []
-    temp = []
-    i, imax = 0, 10
-    for a in a_CN:
-        if i == 0:
-            temp = torch.nonzero(age_CN == a)
-        else:
-            temp = torch.cat((temp, torch.nonzero(age_CN == a)), dim=0)
-        i += 1
-        if i == imax:
-            i = 0
-            temp = temp[0] if temp.nelement() != 0 else torch.tensor([-1])
-            aa_CN.append(temp)
-    i = 0
-    for a in a_MCI:
-        if i == 0:
-            temp = torch.nonzero(age_MCI == a)
-        else:
-            temp = torch.cat((temp, torch.nonzero(age_MCI == a)), dim=0)
-        i += 1
-        if i == imax:
-            i = 0
-            temp = temp[0] if temp.nelement() != 0 else torch.tensor([-1])
-            aa_MCI.append(temp)
-    i = 0
-    for a in a_AD:
-        if i == 0:
-            temp = torch.nonzero(age_AD == a)
-        else:
-            temp = torch.cat((temp, torch.nonzero(age_AD == a)), dim=0)
-        i += 1
-        if i == imax:
-            i = 0
-            temp = temp[0] if temp.nelement() != 0 else torch.tensor([-1])
-            aa_AD.append(temp)
+    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZU.cpu().detach().numpy())
+    # plot the result
 
-    lt, rt = thick['left'], thick['right']
-    CN = CN.view(1, -1).squeeze().numpy()
-    MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
-    AD = AD.view(1, -1).squeeze().numpy()
-    lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
+    vis_x = vis_data[:, 0]
+    vis_y = vis_data[:, 1]
 
-    aa_CN = torch.tensor(aa_CN).view(1, -1).squeeze().numpy()
-    aa_MCI = torch.tensor(aa_MCI).view(1, -1).squeeze().numpy()
-    aa_AD = torch.tensor(aa_AD).view(1, -1).squeeze().numpy()
-    lt_CN, lt_MCI, lt_AD = lt_CN[aa_CN], lt_MCI[aa_MCI], lt_AD[aa_AD]
+    fig, ax = plt.subplots(1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
 
-    input_CN = Variable(torch.tensor(lt_CN)).to(device).float()
-    reconstructed_CN, z_CN, zu_CN, zv_CN = autoencoder.forward(input_CN)
-    CN = autoencoder.decoder(zu_CN).cpu().detach().numpy()
-
-    input_MCI = Variable(torch.tensor(lt_MCI)).to(device).float()
-    reconstructed_MCI, z_MCI, zu_MCI, zv_MCI = autoencoder.forward(input_MCI)
-    MCI = autoencoder.decoder(zu_MCI).cpu().detach().numpy()
-
-    input_AD = Variable(torch.tensor(lt_AD)).to(device).float()
-    reconstructed_AD, z_AD, zu_AD, zv_AD = autoencoder.forward(input_AD)
-    AD = autoencoder.decoder(zu_AD).cpu().detach().numpy()
-
-    lt_global_trajectory = {'CN': CN, 'MCI': MCI, 'AD': AD}
-    scipy.io.savemat('/home/ming/Desktop/lt_global_trajectory.mat', lt_global_trajectory)
+    plt.scatter(vis_x, vis_y, marker='.', c=norm.cdf(demo_train['label']), cmap=plt.cm.get_cmap("rainbow"))
+    plt.axis('off')
+    plt.colorbar()
+    plt.title('t-SNE of ZV space across age')
+    plt.show()
