@@ -104,13 +104,13 @@ if __name__ == '__main__':
     aa_AD = torch.tensor(aa_AD).view(1, -1).squeeze().numpy()
     lt_CN, lt_MCI, lt_AD = lt_CN[aa_CN], lt_MCI[aa_MCI], lt_AD[aa_AD]
 
-    input_CN = Variable(lt_CN).to(device).float()
+    input_CN = Variable(torch.tensor(lt_CN)).to(device).float()
     reconstructed_CN, z_CN, zu_CN, zv_CN = autoencoder.forward(input_CN)
 
-    input_MCI = Variable(lt_MCI).to(device).float()
+    input_MCI = Variable(torch.tensor(lt_MCI)).to(device).float()
     reconstructed_MCI, z_MCI, zu_MCI, zv_MCI = autoencoder.forward(input_MCI)
 
-    input_AD = Variable(lt_AD).to(device).float()
+    input_AD = Variable(torch.tensor(lt_AD)).to(device).float()
     reconstructed_AD, z_AD, zu_AD, zv_AD = autoencoder.forward(input_AD)
 
     lt_global_trajectory = {'CN': zu_CN, 'MCI': zu_MCI, 'AD': zu_AD}
