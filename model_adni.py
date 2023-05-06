@@ -72,7 +72,7 @@ class AE_adni(nn.Module):
         self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 0.5, 0.25
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.25, 1.0, 0.25
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
@@ -260,7 +260,7 @@ class AE_adni(nn.Module):
             # update variance parameter
             xbeta = torch.matmul(X, self.beta)
             yb = torch.matmul(Y, self.b)
-            self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
+            # self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
             # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
@@ -390,7 +390,7 @@ class Classifier(nn.Module):
         for epoch in range(num_epochs):
             optimizer.zero_grad()
             input_data = Variable(input_data).to(self.device).float()
-            target_labels = Variable(target_labels).to(self.device).float()
+            target_labels = torch.tensor(target_labels, device=self.device, dtype=torch.long)
             outputs = self.forward(input_data)
             loss = criterion(outputs, target_labels)
             loss.backward()
