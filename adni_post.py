@@ -40,7 +40,7 @@ if __name__ == '__main__':
     data_generator = Data_preprocess_ADNI(number=40962, label=-1)
     demo_train, demo_test = data_generator.generate_demo_train_test(fold)
 
-    if not os.path.isfile('/train_ZU'):
+    if not os.path.isfile('./data/train_ZU'):
 
         thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
         logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
@@ -102,10 +102,10 @@ if __name__ == '__main__':
         torch.save(test_ZU, './data/test_ZU')
         torch.save(test_ZV, './data/test_ZV')
     else:
-        train_ZU = torch.load('./data/train_ZU')
-        train_ZV = torch.load('./data/train_ZV')
-        test_ZU = torch.load('./data/test_ZU')
-        test_ZV = torch.load('./data/test_ZV')
+        train_ZU = torch.load('./data/train_ZU', map_location=device)
+        train_ZV = torch.load('./data/train_ZV', map_location=device)
+        test_ZU = torch.load('./data/test_ZU', map_location=device)
+        test_ZV = torch.load('./data/test_ZV', map_location=device)
 
     classifier = model_adni.Classifier(target_num=3)
     optimizer_fn = optim.Adam
