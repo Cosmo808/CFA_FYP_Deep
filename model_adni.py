@@ -390,6 +390,7 @@ class Classifier(nn.Module):
         for epoch in range(num_epochs):
             optimizer.zero_grad()
             input_data = Variable(input_data).to(self.device).float()
+            target_labels = Variable(target_labels).to(self.device).float()
             outputs = self.forward(input_data)
             loss = criterion(outputs, target_labels)
             loss.backward()
@@ -402,5 +403,5 @@ class Classifier(nn.Module):
         test_data = Variable(test_data).to(self.device).float()
         test_outputs = self.forward(test_data)
         predicted_class = torch.argmax(test_outputs).item().view(test_target_labels.size())
-        accuracy = 1 - np.count_nonzero((predicted_class - test_target_labels).cpu().detach().numpy()) / test_data.size()[0]
+        accuracy = 1 - np.count_nonzero(predicted_class.cpu().detach().numpy() - test_target_labels) / test_data.size()[0]
         print(f"Prediction accuracy on test dataset is {accuracy:.3}")
