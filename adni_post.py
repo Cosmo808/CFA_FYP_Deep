@@ -33,69 +33,79 @@ fold = 0
 
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
-
     # load model
     autoencoder = torch.load('model/0_fold_all_left_AE_adni', map_location=device)
     autoencoder.eval()
-
     # load data
     data_generator = Data_preprocess_ADNI(number=40962, label=-1)
     demo_train, demo_test = data_generator.generate_demo_train_test(fold)
-    thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
-    logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
-    Dataset = Dataset_adni
-    train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
-                    demo_train['label'], demo_train['subject'], demo_train['timepoint'])
-    test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
-                   demo_test['label'], demo_test['subject'], demo_test['timepoint'])
+    if not os.path.isfile('/train_ZU'):
 
-    train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=False,
-                                               num_workers=0, drop_last=False)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False,
-                                              num_workers=0, drop_last=False)
-    print('Generating data loader finished...')
+        thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
+        logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
-    # get Z, ZU, ZV
-    with torch.no_grad():
-        Z, ZU, ZV = None, None, None
-        for data in train_loader:
-            image = data[autoencoder.left_right]
+        Dataset = Dataset_adni
+        train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
+                        demo_train['label'], demo_train['subject'], demo_train['timepoint'])
+        test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
+                       demo_test['label'], demo_test['subject'], demo_test['timepoint'])
 
-            # self-reconstruction loss
-            input_ = Variable(image).to(device).float()
-            reconstructed, z, zu, zv = autoencoder.forward(input_)
-            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+        train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=False,
+                                                   num_workers=0, drop_last=False)
+        test_loader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False,
+                                                  num_workers=0, drop_last=False)
+        print('Generating data loader finished...')
 
-            # store Z, ZU, ZV
-            if Z is None:
-                Z, ZU, ZV = z, zu, zv
-            else:
-                Z = torch.cat((Z, z), 0)
-                ZU = torch.cat((ZU, zu), 0)
-                ZV = torch.cat((ZV, zv), 0)
+        # get Z, ZU, ZV
+        with torch.no_grad():
+            Z, ZU, ZV = None, None, None
+            for data in train_loader:
+                image = data[autoencoder.left_right]
 
-    train_ZU, train_ZV = ZU, ZV
+                # self-reconstruction loss
+                input_ = Variable(image).to(device).float()
+                reconstructed, z, zu, zv = autoencoder.forward(input_)
+                self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
 
-    with torch.no_grad():
-        Z, ZU, ZV = None, None, None
-        for data in test_loader:
-            image = data[autoencoder.left_right]
+                # store Z, ZU, ZV
+                if Z is None:
+                    Z, ZU, ZV = z, zu, zv
+                else:
+                    Z = torch.cat((Z, z), 0)
+                    ZU = torch.cat((ZU, zu), 0)
+                    ZV = torch.cat((ZV, zv), 0)
 
-            # self-reconstruction loss
-            input_ = Variable(image).to(device).float()
-            reconstructed, z, zu, zv = autoencoder.forward(input_)
-            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+        train_ZU, train_ZV = ZU, ZV
 
-            # store Z, ZU, ZV
-            if Z is None:
-                Z, ZU, ZV = z, zu, zv
-            else:
-                Z = torch.cat((Z, z), 0)
-                ZU = torch.cat((ZU, zu), 0)
-                ZV = torch.cat((ZV, zv), 0)
+        with torch.no_grad():
+            Z, ZU, ZV = None, None, None
+            for data in test_loader:
+                image = data[autoencoder.left_right]
 
-    test_ZU, test_ZV = ZU, ZV
+                # self-reconstruction loss
+                input_ = Variable(image).to(device).float()
+                reconstructed, z, zu, zv = autoencoder.forward(input_)
+                self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+
+                # store Z, ZU, ZV
+                if Z is None:
+                    Z, ZU, ZV = z, zu, zv
+                else:
+                    Z = torch.cat((Z, z), 0)
+                    ZU = torch.cat((ZU, zu), 0)
+                    ZV = torch.cat((ZV, zv), 0)
+
+        test_ZU, test_ZV = ZU, ZV
+        torch.save('./train_ZU', train_ZU)
+        torch.save('./train_ZV', train_ZV)
+        torch.save('./test_ZU', test_ZU)
+        torch.save('./test_ZV', test_ZV)
+    else:
+        train_ZU = torch.load('./train_ZU')
+        train_ZV = torch.load('./train_ZV')
+        test_ZU = torch.load('./test_ZU')
+        test_ZV = torch.load('./test_ZV')
 
     classifier = model_adni.Classifier(target_num=3)
     optimizer_fn = optim.Adam

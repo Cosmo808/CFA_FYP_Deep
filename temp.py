@@ -198,4 +198,4 @@ if __name__ == '__main__':
     plt.axis('off')
     plt.colorbar()
     plt.title('t-SNE of ZV space across age')
-    plt.savefig('/home/ming/Desktop/t-SNE of ZU.png')
+    plt.savefig('/home/ming/Desktop/t-SNE of ZU left.png')
