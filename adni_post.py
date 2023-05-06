@@ -110,4 +110,7 @@ if __name__ == '__main__':
     classifier = model_adni.Classifier(target_num=3)
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=1e-3)
-    classifier.train_(train_ZV, demo_train['label'], test_ZV, demo_test['label'], optimizer=optimizer, num_epochs=200)
+    label_train, label_test = demo_train['label'], demo_test['label']
+    label_train[label_train == 2] = 1
+    label_test[label_test == 2] = 1
+    classifier.train_(train_ZV, label_train, test_ZV, label_test, optimizer=optimizer, num_epochs=200)

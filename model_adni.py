@@ -386,12 +386,12 @@ class Classifier(nn.Module):
 
     def train_(self, input_data, target_labels, test_data, test_target_labels, optimizer, num_epochs):
         self.to(self.device)
-
+        criterion = nn.CrossEntropyLoss()
         for epoch in range(num_epochs):
             optimizer.zero_grad()
             input_data = Variable(input_data).to(self.device).float()
             outputs = self.forward(input_data)
-            loss = nn.CrossEntropyLoss(outputs, target_labels)
+            loss = criterion(outputs, target_labels)
             loss.backward()
             optimizer.step()
 
