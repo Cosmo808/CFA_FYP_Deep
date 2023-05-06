@@ -98,7 +98,11 @@ if __name__ == '__main__':
     MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
     AD = AD.view(1, -1).squeeze().numpy()
     lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
-    print(lt_CN.size())
+
+    print(lt_CN.shape)
+    aa_CN = torch.tensor(aa_CN).view(1, -1).squeeze().numpy()
+    aa_MCI = torch.tensor(aa_MCI).view(1, -1).squeeze().numpy()
+    aa_AD = torch.tensor(aa_AD).view(1, -1).squeeze().numpy()
     lt_CN, lt_MCI, lt_AD = lt_CN[aa_CN], lt_MCI[aa_MCI], lt_AD[aa_AD]
 
-    print(lt_CN.size())
+    print(lt_CN.shape)
