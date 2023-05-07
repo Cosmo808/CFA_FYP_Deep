@@ -380,7 +380,6 @@ class beta_VAE(nn.Module):
                 self_reconstruction_loss, kl_divergence = self.loss(mu, logVar, reconstructed, input_)
 
                 loss = self_reconstruction_loss + self.beta * kl_divergence
-                print(self_reconstruction_loss, kl_divergence)
                 loss.backward()
                 optimizer.step()
                 tloss += float(loss)
