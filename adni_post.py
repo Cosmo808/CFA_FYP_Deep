@@ -43,9 +43,10 @@ if __name__ == '__main__':
     autoencoder.eval()
     # load data
     data_generator = Data_preprocess_ADNI(number=40962, label=-1)
-    demo_train, demo_test = data_generator.generate_demo_train_test(fold)
-
-    thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
+    demo_train, demo_test, thick_train, thick_test = data_generator.generate_orig_data()
+    # demo_train, demo_test = data_generator.generate_demo_train_test(fold)
+    #
+    # thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
     logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
 
     Dataset = Dataset_adni
