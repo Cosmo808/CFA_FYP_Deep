@@ -70,7 +70,8 @@ class AE_adni(nn.Module):
     def _init_mixed_effect_model(self):
         self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device)
         self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
-        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
+        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
+                                         device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.5, 1.0, 0.5
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
@@ -162,7 +163,8 @@ class AE_adni(nn.Module):
                 es += 1
 
             end_time = time()
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(
+                f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
     def evaluate(self, test_data_loader):
         self.to(self.device)
@@ -251,7 +253,7 @@ class AE_adni(nn.Module):
 
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
-            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)\
+            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D) \
                        + 1e-5 * torch.eye(self.D.size()[0], device=self.device)
             temp_mat = torch.inverse(temp_mat)
             self.b = torch.matmul(temp_mat, self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
@@ -265,7 +267,8 @@ class AE_adni(nn.Module):
 
             for i in range(1):
                 dbbd = torch.matmul(torch.inverse(self.D),
-                                    torch.matmul(self.b, torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D))))
+                                    torch.matmul(self.b,
+                                                 torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D))))
                 grad_d = -1 / 2 * (dim_z * torch.inverse(self.D) - dbbd)
                 self.D = self.D + 1e-5 * grad_d
 
@@ -288,12 +291,13 @@ class AE_adni(nn.Module):
         logger.info(f"||U^T * V||^2 = {utv_norm_2:.4}, log p(b) = {log_pb:.3}")
 
 
-class test_AE(nn.Module):
+class beta_VAE(nn.Module):
     def __init__(self, input_dim, left_right=0):
-        super(test_AE, self).__init__()
+        super(beta_VAE, self).__init__()
         nn.Module.__init__(self)
-        self.name = 'test_AE'
+        self.name = 'beta_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.beta = 5.
         self.gamma = 1
         self.input_dim = input_dim
         self.left_right = left_right
@@ -302,6 +306,14 @@ class test_AE(nn.Module):
             nn.Linear(self.input_dim, 4096),
             nn.BatchNorm1d(4096),
             nn.ReLU(),
+        )
+
+        self.mu = nn.Sequential(
+            nn.Linear(4096, dim_z),
+            nn.BatchNorm1d(dim_z),
+        )
+
+        self.logVar = nn.Sequential(
             nn.Linear(4096, dim_z),
             nn.BatchNorm1d(dim_z),
         )
@@ -316,19 +328,36 @@ class test_AE(nn.Module):
 
     def forward(self, input):
         z = self.encoder(input)
+        mu = self.mu(z)
+        logVar = self.logVar(z)
+        if self.training:
+            z = self.reparametrize(mu, logVar)
+        else:
+            z = mu
         output = self.decoder(z)
-        return output
+        return mu, logVar, output
+
+    def reparametrize(self, mu, logVar):
+        # Reparameterization takes in the input mu and logVar and sample the mu + std * eps
+        std = torch.exp(logVar / 2).to(self.device)
+        eps = torch.normal(mean=torch.tensor([0 for i in range(std.shape[1])]).float(), std=1).to(self.device)
+        if self.beta != 0:  # beta VAE
+            return mu + eps * std
+        else:  # regular AE
+            return mu
 
     @staticmethod
-    def loss(input_, reconstructed):
-        recon_loss = torch.mean((reconstructed - input_) ** 2)
-        return recon_loss
+    def loss(mu, logVar, reconstructed, input_):
+        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
+        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        return recon_error, kl_divergence
 
-    def train_(self, train_data_loader, a, optimizer, num_epochs):
+    def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
         self.to(self.device)
         best_loss = 1e10
         es = 0
 
+        self.training = True
         for epoch in range(num_epochs):
 
             start_time = time()
@@ -347,10 +376,11 @@ class test_AE(nn.Module):
 
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device).float()
-                reconstructed = self.forward(input_)
-                self_reconstruction_loss = self.loss(input_, reconstructed)
+                mu, logVar, reconstructed = self.forward(input_)
+                self_reconstruction_loss, kl_divergence = self.loss(mu, logVar, reconstructed, input_)
 
-                loss = self_reconstruction_loss
+                loss = self_reconstruction_loss + self.beta * kl_divergence
+                print(self_reconstruction_loss, kl_divergence)
                 loss.backward()
                 optimizer.step()
                 tloss += float(loss)
@@ -366,6 +396,7 @@ class test_AE(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train): {epoch_loss:.4} take {end_time - start_time:.3} seconds\n")
+        self.training = False
 
 
 class Classifier(nn.Module):
