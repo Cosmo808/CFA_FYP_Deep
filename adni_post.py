@@ -78,46 +78,33 @@ if __name__ == '__main__':
                 Z = torch.cat((Z, z), 0)
                 ZU = torch.cat((ZU, zu), 0)
                 ZV = torch.cat((ZV, zv), 0)
+    train_ZV = ZV
 
-    # tloss = 0.0
-    # nb_batches = 0
-    # with torch.no_grad():
-    #     Z, ZU, ZV = None, None, None
-    #     for data in test_loader:
-    #         image = data[autoencoder.left_right]
-    #
-    #         # self-reconstruction loss
-    #         input_ = Variable(image).to(device).float()
-    #         reconstructed, z, zu, zv = autoencoder.forward(input_)
-    #         self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #
-    #         # store Z, ZU, ZV
-    #         if Z is None:
-    #             Z, ZU, ZV = z, zu, zv
-    #         else:
-    #             Z = torch.cat((Z, z), 0)
-    #             ZU = torch.cat((ZU, zu), 0)
-    #             ZV = torch.cat((ZV, zv), 0)
-    #
-    #         tloss += float(self_reconstruction_loss)
-    #         nb_batches += 1
-    # loss = tloss / nb_batches
+    with torch.no_grad():
+        Z, ZU, ZV = None, None, None
+        for data in test_loader:
+            image = data[autoencoder.left_right]
 
-    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZU.cpu().detach().numpy())
-    # plot the result
+            # self-reconstruction loss
+            input_ = Variable(image).to(device).float()
+            reconstructed, z, zu, zv = autoencoder.forward(input_)
+            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
 
-    vis_x = vis_data[:, 0]
-    vis_y = vis_data[:, 1]
+            # store Z, ZU, ZV
+            if Z is None:
+                Z, ZU, ZV = z, zu, zv
+            else:
+                Z = torch.cat((Z, z), 0)
+                ZU = torch.cat((ZU, zu), 0)
+                ZV = torch.cat((ZV, zv), 0)
+    test_ZV = ZV
 
-    fig, ax = plt.subplots(1)
-    ax.set_yticklabels([])
-    ax.set_xticklabels([])
-
-    label = demo_train['label']
-    label[label == 2] = 1
-    scatter = plt.scatter(vis_x, vis_y, marker='.', c=label, cmap=plt.cm.get_cmap("rainbow"))
-    plt.legend(handles=scatter.legend_elements()[0], labels=['CN', 'MCI', 'AD'])
-    plt.axis('off')
-    plt.colorbar()
-    # plt.title('t-SNE of ZV space across different diagnosis')
-    plt.savefig('/home/ming/Desktop/t-SNE of ZU left.png')
+    classifier = model_adni.Classifier(target_num=3)
+    optimizer_fn = optim.Adam
+    optimizer = optimizer_fn(classifier.parameters(), lr=1e-2)
+    label_train, label_test = demo_train['label'], demo_test['label']
+    label_train[label_train == 2] = 1
+    label_test[label_test == 2] = 1
+    label_train[label_train == 3] = 2
+    label_test[label_test == 3] = 2
+    classifier.train_(train_ZV, label_train, test_ZV, label_test, optimizer=optimizer, num_epochs=2000)
