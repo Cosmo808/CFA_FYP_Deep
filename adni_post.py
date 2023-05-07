@@ -61,50 +61,77 @@ if __name__ == '__main__':
     print('Generating data loader finished...')
 
     # get Z, ZU, ZV
-    with torch.no_grad():
-        Z, ZU, ZV = None, None, None
-        for data in train_loader:
-            image = data[autoencoder.left_right]
+    # with torch.no_grad():
+    #     Z, ZU, ZV = None, None, None
+    #     for data in train_loader:
+    #         image = data[autoencoder.left_right]
+    #
+    #         # self-reconstruction loss
+    #         input_ = Variable(image).to(device).float()
+    #         reconstructed, z, zu, zv = autoencoder.forward(input_)
+    #         self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+    #
+    #         # store Z, ZU, ZV
+    #         if Z is None:
+    #             Z, ZU, ZV = z, zu, zv
+    #         else:
+    #             Z = torch.cat((Z, z), 0)
+    #             ZU = torch.cat((ZU, zu), 0)
+    #             ZV = torch.cat((ZV, zv), 0)
+    # train_ZV = ZV
+    #
+    # with torch.no_grad():
+    #     Z, ZU, ZV = None, None, None
+    #     for data in test_loader:
+    #         image = data[autoencoder.left_right]
+    #
+    #         # self-reconstruction loss
+    #         input_ = Variable(image).to(device).float()
+    #         reconstructed, z, zu, zv = autoencoder.forward(input_)
+    #         self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+    #
+    #         # store Z, ZU, ZV
+    #         if Z is None:
+    #             Z, ZU, ZV = z, zu, zv
+    #         else:
+    #             Z = torch.cat((Z, z), 0)
+    #             ZU = torch.cat((ZU, zu), 0)
+    #             ZV = torch.cat((ZV, zv), 0)
+    # test_ZV = ZV
 
-            # self-reconstruction loss
-            input_ = Variable(image).to(device).float()
-            reconstructed, z, zu, zv = autoencoder.forward(input_)
-            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+    age = demo_train['age']
+    a = np.round(np.arange(min(age), max(age), 0.1), 1)
 
-            # store Z, ZU, ZV
-            if Z is None:
-                Z, ZU, ZV = z, zu, zv
-            else:
-                Z = torch.cat((Z, z), 0)
-                ZU = torch.cat((ZU, zu), 0)
-                ZV = torch.cat((ZV, zv), 0)
-    train_ZV = ZV
+    aa = []
+    temp = []
+    i, imax = 0, 10
+    for aaa in a:
+        if i == 0:
+            temp = torch.nonzero(age == aaa)
+        else:
+            temp = torch.cat((temp, torch.nonzero(age == aaa)), dim=0)
+        i += 1
+        if i == 10:
+            i = 0
+            aa.append(temp)
 
-    with torch.no_grad():
-        Z, ZU, ZV = None, None, None
-        for data in test_loader:
-            image = data[autoencoder.left_right]
+    lt, rt = thick_train['left'], thick_train['right']
+    avg_lt = np.zeros(shape=[len(aa), lt.shape[1]])
+    avg_rt = np.zeros(shape=[len(aa), lt.shape[1]])
+    for i, a in enumerate(aa):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            avg = np.sum(lt[a], axis=0) / len(a)
+        except TypeError:
+            avg = lt[a]
+        avg_lt[i] = avg
+    for i, a in enumerate(aa):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            avg = np.sum(rt[a], axis=0) / len(a)
+        except TypeError:
+            avg = rt[a]
+        avg_rt[i] = avg
 
-            # self-reconstruction loss
-            input_ = Variable(image).to(device).float()
-            reconstructed, z, zu, zv = autoencoder.forward(input_)
-            self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-
-            # store Z, ZU, ZV
-            if Z is None:
-                Z, ZU, ZV = z, zu, zv
-            else:
-                Z = torch.cat((Z, z), 0)
-                ZU = torch.cat((ZU, zu), 0)
-                ZV = torch.cat((ZV, zv), 0)
-    test_ZV = ZV
-
-    classifier = model_adni.Classifier(target_num=3)
-    optimizer_fn = optim.Adam
-    optimizer = optimizer_fn(classifier.parameters(), lr=1e-2)
-    label_train, label_test = demo_train['label'], demo_test['label']
-    label_train[label_train == 2] = 1
-    label_test[label_test == 2] = 1
-    label_train[label_train == 3] = 2
-    label_test[label_test == 3] = 2
-    classifier.train_(train_ZV, label_train, test_ZV, label_test, optimizer=optimizer, num_epochs=2000)
+    lt_mat = {'all_left': avg_lt, 'all_right': avg_rt}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg_all.mat', lt_mat)

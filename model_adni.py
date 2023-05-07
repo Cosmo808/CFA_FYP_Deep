@@ -428,7 +428,7 @@ class Classifier(nn.Module):
 
         test_data = Variable(test_data).to(self.device).float()
         test_outputs = self.forward(test_data)
-        predicted_class = torch.argmax(test_outputs, dim=0).cpu().detach().numpy()
+        predicted_class = torch.argmax(test_outputs, dim=1).cpu().detach().numpy()
         test_target_labels[test_target_labels == 2] = 1
         test_target_labels[test_target_labels == 3] = 2
         accuracy = 1 - np.count_nonzero(predicted_class - test_target_labels.numpy()) / test_data.size()[0]
