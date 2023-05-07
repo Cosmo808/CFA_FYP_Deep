@@ -199,3 +199,13 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.title('t-SNE of ZV space across age')
     plt.savefig('/home/ming/Desktop/t-SNE of ZU left.png')
+
+    classifier = model_adni.Classifier(target_num=3)
+    optimizer_fn = optim.Adam
+    optimizer = optimizer_fn(classifier.parameters(), lr=1e-2)
+    label_train, label_test = demo_train['label'], demo_test['label']
+    label_train[label_train == 2] = 1
+    label_test[label_test == 2] = 1
+    label_train[label_train == 3] = 2
+    label_test[label_test == 3] = 2
+    classifier.train_(train_ZV, label_train, test_ZV, label_test, optimizer=optimizer, num_epochs=2000)
