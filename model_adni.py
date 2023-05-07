@@ -140,7 +140,7 @@ class AE_adni(nn.Module):
                 loss = recon_loss
                 loss.backward()
                 optimizer.step()
-                tloss += float(loss)
+                tloss += float(self_reconstruction_loss)
                 nb_batches += 1
 
             # comply with generative model
@@ -163,7 +163,6 @@ class AE_adni(nn.Module):
                 es += 1
 
             end_time = time()
-            logger.info(f"Self-recon loss: {float(self_reconstruction_loss):.4}")
             logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
 
     def evaluate(self, test_data_loader):
@@ -381,7 +380,7 @@ class beta_VAE(nn.Module):
                 loss = self_reconstruction_loss + self.beta * kl_divergence
                 loss.backward()
                 optimizer.step()
-                tloss += float(loss)
+                tloss += float(self_reconstruction_loss)
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
@@ -393,7 +392,6 @@ class beta_VAE(nn.Module):
                 es += 1
 
             end_time = time()
-            logger.info(f"Self-recon loss: {float(self_reconstruction_loss):.4}")
             logger.info(f"Epoch loss (train): {epoch_loss:.4} take {end_time - start_time:.3} seconds\n")
 
 
