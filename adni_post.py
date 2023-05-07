@@ -61,29 +61,9 @@ if __name__ == '__main__':
     print('Generating data loader finished...')
 
     # get Z, ZU, ZV
-    # with torch.no_grad():
-    #     Z, ZU, ZV = None, None, None
-    #     for data in train_loader:
-    #         image = data[autoencoder.left_right]
-    #
-    #         # self-reconstruction loss
-    #         input_ = Variable(image).to(device).float()
-    #         reconstructed, z, zu, zv = autoencoder.forward(input_)
-    #         self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
-    #
-    #         # store Z, ZU, ZV
-    #         if Z is None:
-    #             Z, ZU, ZV = z, zu, zv
-    #         else:
-    #             Z = torch.cat((Z, z), 0)
-    #             ZU = torch.cat((ZU, zu), 0)
-    #             ZV = torch.cat((ZV, zv), 0)
-
-    tloss = 0.0
-    nb_batches = 0
     with torch.no_grad():
         Z, ZU, ZV = None, None, None
-        for data in test_loader:
+        for data in train_loader:
             image = data[autoencoder.left_right]
 
             # self-reconstruction loss
@@ -99,7 +79,45 @@ if __name__ == '__main__':
                 ZU = torch.cat((ZU, zu), 0)
                 ZV = torch.cat((ZV, zv), 0)
 
-            tloss += float(self_reconstruction_loss)
-            nb_batches += 1
-    loss = tloss / nb_batches
-    print(loss)
+    # tloss = 0.0
+    # nb_batches = 0
+    # with torch.no_grad():
+    #     Z, ZU, ZV = None, None, None
+    #     for data in test_loader:
+    #         image = data[autoencoder.left_right]
+    #
+    #         # self-reconstruction loss
+    #         input_ = Variable(image).to(device).float()
+    #         reconstructed, z, zu, zv = autoencoder.forward(input_)
+    #         self_reconstruction_loss = autoencoder.loss(input_, reconstructed)
+    #
+    #         # store Z, ZU, ZV
+    #         if Z is None:
+    #             Z, ZU, ZV = z, zu, zv
+    #         else:
+    #             Z = torch.cat((Z, z), 0)
+    #             ZU = torch.cat((ZU, zu), 0)
+    #             ZV = torch.cat((ZV, zv), 0)
+    #
+    #         tloss += float(self_reconstruction_loss)
+    #         nb_batches += 1
+    # loss = tloss / nb_batches
+
+    vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(ZU.cpu().detach().numpy())
+    # plot the result
+
+    vis_x = vis_data[:, 0]
+    vis_y = vis_data[:, 1]
+
+    fig, ax = plt.subplots(1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+
+    label = demo_train['label']
+    label[label == 2] = 1
+    scatter = plt.scatter(vis_x, vis_y, marker='.', c=label, cmap=plt.cm.get_cmap("rainbow"))
+    plt.legend(handles=scatter.legend_elements()[0], labels=['CN', 'MCI', 'AD'])
+    plt.axis('off')
+    plt.colorbar()
+    # plt.title('t-SNE of ZV space across different diagnosis')
+    plt.savefig('/home/ming/Desktop/t-SNE of ZU left.png')
