@@ -422,12 +422,14 @@ class Classifier(nn.Module):
             loss.backward()
             optimizer.step()
 
-            print(f"Epoch {epoch + 1} Loss: {loss.item()}")
+        print(f"Epoch {epoch + 1} Loss: {loss.item()}")
 
         print('Training finished...')
 
         test_data = Variable(test_data).to(self.device).float()
         test_outputs = self.forward(test_data)
-        predicted_class = torch.argmax(test_outputs).item()
-        accuracy = 1 - np.count_nonzero(predicted_class - test_target_labels) / test_data.size()[0]
+        predicted_class = torch.argmax(test_outputs, dim=0).cpu().detach().numpy()
+        test_target_labels[test_target_labels == 2] = 1
+        test_target_labels[test_target_labels == 3] = 2
+        accuracy = 1 - np.count_nonzero(predicted_class - test_target_labels.numpy()) / test_data.size()[0]
         print(f"Prediction accuracy on test dataset is {accuracy:.3}")
