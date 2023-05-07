@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 import torch
 import torch.optim as optim
@@ -26,7 +27,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-device = torch.device(f"cuda:0")
+device = torch.device(f"cuda:1")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--fold', type=int, default=0)
@@ -43,22 +44,22 @@ if __name__ == '__main__':
     autoencoder.eval()
     # load data
     data_generator = Data_preprocess_ADNI(number=40962, label=-1)
-    # demo_train, demo_test, thick_train, thick_test = data_generator.generate_orig_data()
-    demo_train, demo_test = data_generator.generate_demo_train_test(fold)
+    demo_train, demo_test, thick_train, thick_test = data_generator.generate_orig_data()
+    # demo_train, demo_test = data_generator.generate_demo_train_test(fold)
 
-    thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
-    logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
-
-    Dataset = Dataset_adni
-    train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
-                    demo_train['label'], demo_train['subject'], demo_train['timepoint'])
-    test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
-                   demo_test['label'], demo_test['subject'], demo_test['timepoint'])
-
-    train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=False,
-                                               num_workers=0, drop_last=False)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False,
-                                              num_workers=0, drop_last=False)
+    # thick_train, thick_test, input_dim = data_generator.generate_thick_train_test(fold)
+    # logger.info(f"Loaded {len(demo_train['age']) + len(demo_test['age'])} scans")
+    #
+    # Dataset = Dataset_adni
+    # train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
+    #                 demo_train['label'], demo_train['subject'], demo_train['timepoint'])
+    # test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
+    #                demo_test['label'], demo_test['subject'], demo_test['timepoint'])
+    #
+    # train_loader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=False,
+    #                                            num_workers=0, drop_last=False)
+    # test_loader = torch.utils.data.DataLoader(test, batch_size=128, shuffle=False,
+    #                                           num_workers=0, drop_last=False)
     print('Generating data loader finished...')
 
     # get Z, ZU, ZV
@@ -121,10 +122,17 @@ if __name__ == '__main__':
     avg_rt = np.zeros(shape=[len(aa), lt.shape[1]])
     for i, a in enumerate(aa):
         a = a.view(1, -1).squeeze().numpy()
+        print('Start', a, a.shape)
         try:
             np.sort(a)
-            avg = np.sum(lt[a], axis=0) / len(a)
+            length = len(a)
+            print('Try', a, a.shape)
+            avg = np.sum(lt[a], axis=0) / length
+        except np.AxisError:
+            print('AxisError', a, a.shape)
+            avg = lt[a]
         except TypeError:
+            print('TypeError', a, a.shape)
             avg = lt[a]
         avg_lt[i] = avg
     for i, a in enumerate(aa):
