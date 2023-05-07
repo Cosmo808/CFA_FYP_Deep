@@ -348,8 +348,8 @@ class beta_VAE(nn.Module):
 
     @staticmethod
     def loss(mu, logVar, reconstructed, input_):
-        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
-        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
+        recon_error = torch.mean((reconstructed - input_) ** 2)
         return recon_error, kl_divergence
 
     def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
