@@ -357,7 +357,6 @@ class beta_VAE(nn.Module):
         best_loss = 1e10
         es = 0
 
-        self.training = True
         for epoch in range(num_epochs):
 
             start_time = time()
@@ -395,7 +394,6 @@ class beta_VAE(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train): {epoch_loss:.4} take {end_time - start_time:.3} seconds\n")
-        self.training = False
 
 
 class Classifier(nn.Module):
