@@ -115,4 +115,83 @@ if __name__ == '__main__':
     a_MCI = np.round(np.arange(min(age_MCI), max(age_MCI), 0.1), 1)
     a_AD = np.round(np.arange(min(age_AD), max(age_AD), 0.1), 1)
 
-    print(a_CN, a_MCI, a_AD)
+    aa_CN, aa_MCI, aa_AD = [], [], []
+    temp = []
+    i, imax = 0, 10
+    for a in a_CN:
+        if i == 0:
+            temp = torch.nonzero(age_CN == a)
+        else:
+            temp = torch.cat((temp, torch.nonzero(age_CN == a)), dim=0)
+        i += 1
+        if i == imax:
+            i = 0
+            aa_CN.append(temp)
+    i = 0
+    for a in a_MCI:
+        if i == 0:
+            temp = torch.nonzero(age_MCI == a)
+        else:
+            temp = torch.cat((temp, torch.nonzero(age_MCI == a)), dim=0)
+        i += 1
+        if i == imax:
+            i = 0
+            aa_MCI.append(temp)
+    i = 0
+    for a in a_AD:
+        if i == 0:
+            temp = torch.nonzero(age_AD == a)
+        else:
+            temp = torch.cat((temp, torch.nonzero(age_AD == a)), dim=0)
+        i += 1
+        if i == imax:
+            i = 0
+            aa_AD.append(temp)
+
+    lt, rt = thick['left'], thick['right']
+    CN = CN.view(1, -1).squeeze().numpy()
+    MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
+    AD = AD.view(1, -1).squeeze().numpy()
+    lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
+    avg_lt_CN = np.zeros(shape=[len(aa_CN), lt_CN.shape[1]])
+    avg_lt_MCI = np.zeros(shape=[len(aa_MCI), lt_MCI.shape[1]])
+    avg_lt_AD = np.zeros(shape=[len(aa_AD), lt_AD.shape[1]])
+
+    for i, a in enumerate(aa_CN):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            np.sort(a)
+            length = len(a)
+            avg = np.sum(lt[a], axis=0) / length
+        except np.AxisError:
+            avg = lt[a]
+        except TypeError:
+            avg = lt[a]
+        avg_lt_CN[i] = avg
+
+    for i, a in enumerate(aa_MCI):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            np.sort(a)
+            length = len(a)
+            avg = np.sum(lt[a], axis=0) / length
+        except np.AxisError:
+            avg = lt[a]
+        except TypeError:
+            avg = lt[a]
+        avg_lt_MCI[i] = avg
+
+    for i, a in enumerate(aa_AD):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            np.sort(a)
+            length = len(a)
+            avg = np.sum(lt[a], axis=0) / length
+        except np.AxisError:
+            avg = lt[a]
+        except TypeError:
+            avg = lt[a]
+        avg_lt_AD[i] = avg
+
+    lt_mat = {'CN_left': avg_lt_CN, 'MCI_left': avg_lt_MCI, 'AD_left': avg_lt_AD}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg.mat', lt_mat)

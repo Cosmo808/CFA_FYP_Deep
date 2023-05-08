@@ -231,17 +231,13 @@ if __name__ == '__main__':
     avg_rt = np.zeros(shape=[len(aa), lt.shape[1]])
     for i, a in enumerate(aa):
         a = a.view(1, -1).squeeze().numpy()
-        print('Start', a, a.shape)
         try:
             np.sort(a)
             length = len(a)
-            print('Try', a, a.shape)
             avg = np.sum(lt[a], axis=0) / length
         except np.AxisError:
-            print('AxisError', a, a.shape)
             avg = lt[a]
         except TypeError:
-            print('TypeError', a, a.shape)
             avg = lt[a]
         avg_lt[i] = avg
     for i, a in enumerate(aa):
@@ -250,10 +246,8 @@ if __name__ == '__main__':
             np.sort(a)
             avg = np.sum(rt[a], axis=0) / len(a)
         except np.AxisError:
-            print('AxisError', a, a.shape)
             avg = rt[a]
         except TypeError:
-            print('TypeError', a, a.shape)
             avg = rt[a]
         avg_rt[i] = avg
 
