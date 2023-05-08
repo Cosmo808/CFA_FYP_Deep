@@ -140,7 +140,11 @@ if __name__ == '__main__':
         try:
             np.sort(a)
             avg = np.sum(rt[a], axis=0) / len(a)
+        except np.AxisError:
+            print('AxisError', a, a.shape)
+            avg = rt[a]
         except TypeError:
+            print('TypeError', a, a.shape)
             avg = rt[a]
         avg_rt[i] = avg
 
