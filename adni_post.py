@@ -152,7 +152,7 @@ if __name__ == '__main__':
     CN = CN.view(1, -1).squeeze().numpy()
     MCI = np.sort(MCI.view(1, -1).squeeze().numpy())
     AD = AD.view(1, -1).squeeze().numpy()
-    lt_CN, lt_MCI, lt_AD = rt[CN], rt[MCI], rt[AD]
+    lt_CN, lt_MCI, lt_AD = lt[CN], lt[MCI], lt[AD]
     avg_lt_CN = np.zeros(shape=[len(aa_CN), lt_CN.shape[1]])
     avg_lt_MCI = np.zeros(shape=[len(aa_MCI), lt_MCI.shape[1]])
     avg_lt_AD = np.zeros(shape=[len(aa_AD), lt_AD.shape[1]])
@@ -193,5 +193,5 @@ if __name__ == '__main__':
             avg = lt[a]
         avg_lt_AD[i] = avg
 
-    lt_mat = {'CN_right': avg_lt_CN, 'MCI_right': avg_lt_MCI, 'AD_right': avg_lt_AD}
-    scipy.io.savemat('/home/ming/Desktop/lt_avg_right.mat', lt_mat)
+    lt_mat = {'CN_left': avg_lt_CN, 'MCI_left': avg_lt_MCI, 'AD_left': avg_lt_AD}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg_left.mat', lt_mat)
