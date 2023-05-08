@@ -101,52 +101,18 @@ if __name__ == '__main__':
     #             ZV = torch.cat((ZV, zv), 0)
     # test_ZV = ZV
 
-    age = demo_train['age']
-    a = np.round(np.arange(min(age), max(age), 0.1), 1)
+    demo = demo_train
+    thick = thick_train
+    CN = torch.nonzero(demo['label'] == 0)
+    MCI = torch.cat((torch.nonzero(demo['label'] == 1), torch.nonzero(demo['label'] == 2)), dim=0)
+    AD = torch.nonzero(demo['label'] == 3)
 
-    aa = []
-    temp = []
-    i, imax = 0, 10
-    for aaa in a:
-        if i == 0:
-            temp = torch.nonzero(age == aaa)
-        else:
-            temp = torch.cat((temp, torch.nonzero(age == aaa)), dim=0)
-        i += 1
-        if i == 10:
-            i = 0
-            aa.append(temp)
+    age_CN = demo['age'][CN].squeeze()
+    age_MCI = demo['age'][MCI].squeeze()
+    age_AD = demo['age'][AD].squeeze()
 
-    lt, rt = thick_train['left'], thick_train['right']
-    avg_lt = np.zeros(shape=[len(aa), lt.shape[1]])
-    avg_rt = np.zeros(shape=[len(aa), lt.shape[1]])
-    for i, a in enumerate(aa):
-        a = a.view(1, -1).squeeze().numpy()
-        print('Start', a, a.shape)
-        try:
-            np.sort(a)
-            length = len(a)
-            print('Try', a, a.shape)
-            avg = np.sum(lt[a], axis=0) / length
-        except np.AxisError:
-            print('AxisError', a, a.shape)
-            avg = lt[a]
-        except TypeError:
-            print('TypeError', a, a.shape)
-            avg = lt[a]
-        avg_lt[i] = avg
-    for i, a in enumerate(aa):
-        a = a.view(1, -1).squeeze().numpy()
-        try:
-            np.sort(a)
-            avg = np.sum(rt[a], axis=0) / len(a)
-        except np.AxisError:
-            print('AxisError', a, a.shape)
-            avg = rt[a]
-        except TypeError:
-            print('TypeError', a, a.shape)
-            avg = rt[a]
-        avg_rt[i] = avg
+    a_CN = np.round(np.arange(min(age_CN), max(age_CN), 0.1), 1)
+    a_MCI = np.round(np.arange(min(age_MCI), max(age_MCI), 0.1), 1)
+    a_AD = np.round(np.arange(min(age_AD), max(age_AD), 0.1), 1)
 
-    lt_mat = {'all_left': avg_lt, 'all_right': avg_rt}
-    scipy.io.savemat('/home/ming/Desktop/lt_avg_all.mat', lt_mat)
+    print(a_CN, a_MCI, a_AD)

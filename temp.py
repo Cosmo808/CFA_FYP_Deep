@@ -209,3 +209,53 @@ if __name__ == '__main__':
     label_train[label_train == 3] = 2
     label_test[label_test == 3] = 2
     classifier.train_(train_ZV, label_train, test_ZV, label_test, optimizer=optimizer, num_epochs=2000)
+
+    age = demo_train['age']
+    a = np.round(np.arange(min(age), max(age), 0.1), 1)
+
+    aa = []
+    temp = []
+    i, imax = 0, 10
+    for aaa in a:
+        if i == 0:
+            temp = torch.nonzero(age == aaa)
+        else:
+            temp = torch.cat((temp, torch.nonzero(age == aaa)), dim=0)
+        i += 1
+        if i == 10:
+            i = 0
+            aa.append(temp)
+
+    lt, rt = thick_train['left'], thick_train['right']
+    avg_lt = np.zeros(shape=[len(aa), lt.shape[1]])
+    avg_rt = np.zeros(shape=[len(aa), lt.shape[1]])
+    for i, a in enumerate(aa):
+        a = a.view(1, -1).squeeze().numpy()
+        print('Start', a, a.shape)
+        try:
+            np.sort(a)
+            length = len(a)
+            print('Try', a, a.shape)
+            avg = np.sum(lt[a], axis=0) / length
+        except np.AxisError:
+            print('AxisError', a, a.shape)
+            avg = lt[a]
+        except TypeError:
+            print('TypeError', a, a.shape)
+            avg = lt[a]
+        avg_lt[i] = avg
+    for i, a in enumerate(aa):
+        a = a.view(1, -1).squeeze().numpy()
+        try:
+            np.sort(a)
+            avg = np.sum(rt[a], axis=0) / len(a)
+        except np.AxisError:
+            print('AxisError', a, a.shape)
+            avg = rt[a]
+        except TypeError:
+            print('TypeError', a, a.shape)
+            avg = rt[a]
+        avg_rt[i] = avg
+
+    lt_mat = {'all_left': avg_lt, 'all_right': avg_rt}
+    scipy.io.savemat('/home/ming/Desktop/lt_avg_all.mat', lt_mat)
