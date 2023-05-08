@@ -160,7 +160,7 @@ if __name__ == '__main__':
     for i, a in enumerate(aa_CN):
         a = a.view(1, -1).squeeze().numpy()
         try:
-            np.sort(a)
+            a = np.sort(a)
             length = len(a)
             avg = np.sum(lt[a], axis=0) / length
         except np.AxisError:
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     for i, a in enumerate(aa_MCI):
         a = a.view(1, -1).squeeze().numpy()
         try:
-            np.sort(a)
+            a = np.sort(a)
             length = len(a)
             avg = np.sum(lt[a], axis=0) / length
         except np.AxisError:
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     for i, a in enumerate(aa_AD):
         a = a.view(1, -1).squeeze().numpy()
         try:
-            np.sort(a)
+            a = np.sort(a)
             length = len(a)
             avg = np.sum(lt[a], axis=0) / length
         except np.AxisError:
