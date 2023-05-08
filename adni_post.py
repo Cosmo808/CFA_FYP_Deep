@@ -194,4 +194,4 @@ if __name__ == '__main__':
         avg_lt_AD[i] = avg
 
     lt_mat = {'CN_right': avg_lt_CN, 'MCI_right': avg_lt_MCI, 'AD_right': avg_lt_AD}
-    scipy.io.savemat('/home/ming/Desktop/lt_avg.mat', lt_mat)
+    scipy.io.savemat('/home/ming/Desktop/lt_avg_right.mat', lt_mat)
