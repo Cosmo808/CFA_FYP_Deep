@@ -162,11 +162,11 @@ if __name__ == '__main__':
         try:
             a = np.sort(a)
             length = len(a)
-            avg = np.sum(lt[a], axis=0) / length
+            avg = np.sum(lt_CN[a], axis=0) / length
         except np.AxisError:
-            avg = lt[a]
+            avg = lt_CN[a]
         except TypeError:
-            avg = lt[a]
+            avg = lt_CN[a]
         avg_lt_CN[i] = avg
 
     for i, a in enumerate(aa_MCI):
@@ -174,11 +174,11 @@ if __name__ == '__main__':
         try:
             a = np.sort(a)
             length = len(a)
-            avg = np.sum(lt[a], axis=0) / length
+            avg = np.sum(lt_MCI[a], axis=0) / length
         except np.AxisError:
-            avg = lt[a]
+            avg = lt_MCI[a]
         except TypeError:
-            avg = lt[a]
+            avg = lt_MCI[a]
         avg_lt_MCI[i] = avg
 
     for i, a in enumerate(aa_AD):
@@ -186,12 +186,12 @@ if __name__ == '__main__':
         try:
             a = np.sort(a)
             length = len(a)
-            avg = np.sum(lt[a], axis=0) / length
+            avg = np.sum(lt_AD[a], axis=0) / length
         except np.AxisError:
-            avg = lt[a]
+            avg = lt_AD[a]
         except TypeError:
-            avg = lt[a]
+            avg = lt_AD[a]
         avg_lt_AD[i] = avg
 
     lt_mat = {'CN_left': avg_lt_CN, 'MCI_left': avg_lt_MCI, 'AD_left': avg_lt_AD}
-    scipy.io.savemat('/home/ming/Desktop/lt_avg_left.mat', lt_mat)
+    scipy.io.savemat('/home/ming/Desktop/lt_avg_right.mat', lt_mat)
