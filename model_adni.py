@@ -179,10 +179,10 @@ class AE_adni(nn.Module):
                 loss = recon_loss + self.beta * kl_loss
                 loss.backward()
                 optimizer.step()
-                tloss[0] += float(self_reconstruction_loss)
-                tloss[1] += float(kl_loss)
-                tloss[2] += float(cross_reconstruction_loss)
-                tloss[-1] += float(loss)
+                tloss[0] += np.round(float(self_reconstruction_loss), 3)
+                tloss[1] += np.round(float(kl_loss), 3)
+                tloss[2] += np.round(float(cross_reconstruction_loss), 3)
+                tloss[-1] += np.round(float(loss), 3)
                 nb_batches += 1
 
             # comply with generative model
@@ -244,9 +244,9 @@ class AE_adni(nn.Module):
                     recon_loss = self_reconstruction_loss
 
                 # loss = recon_loss + self.beta * kl_loss
-                tloss[0] += float(self_reconstruction_loss)
-                tloss[1] += float(kl_loss)
-                tloss[2] += float(cross_reconstruction_loss)
+                tloss[0] += np.round(float(self_reconstruction_loss), 3)
+                tloss[1] += np.round(float(kl_loss), 3)
+                tloss[2] += np.round(float(cross_reconstruction_loss), 3)
                 nb_batches += 1
 
         loss = tloss / nb_batches
@@ -446,9 +446,9 @@ class beta_VAE(nn.Module):
                 loss = self_reconstruction_loss + self.beta * kl_divergence
                 loss.backward()
                 optimizer.step()
-                tloss[0] += float(self_reconstruction_loss)
-                tloss[1] += float(kl_divergence)
-                tloss[-1] += float(loss)
+                tloss[0] += np.round(float(self_reconstruction_loss), 3)
+                tloss[1] += np.round(float(kl_divergence), 3)
+                tloss[-1] += np.round(float(loss), 3)
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
@@ -460,7 +460,7 @@ class beta_VAE(nn.Module):
                 es += 1
 
             end_time = time()
-            logger.info(f"Epoch loss (train): {epoch_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(f"Epoch loss (train): {epoch_loss} take {end_time - start_time:.3} seconds\n")
 
 
 class Classifier(nn.Module):
