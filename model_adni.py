@@ -27,6 +27,7 @@ class AE_adni(nn.Module):
         nn.Module.__init__(self)
         self.name = 'AE_adni'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.beta = 5
         self.gamma = 1
         self.lam = 1
         self.input_dim = input_dim
@@ -36,6 +37,14 @@ class AE_adni(nn.Module):
             nn.Linear(self.input_dim, 4096),
             nn.BatchNorm1d(4096),
             nn.ReLU(),
+        )
+
+        self.mu = nn.Sequential(
+            nn.Linear(4096, dim_z),
+            nn.BatchNorm1d(dim_z),
+        )
+
+        self.logVar = nn.Sequential(
             nn.Linear(4096, dim_z),
             nn.BatchNorm1d(dim_z),
         )
@@ -53,19 +62,39 @@ class AE_adni(nn.Module):
         self.U, self.V = None, None
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = None, None, None
 
+    def reparametrize(self, mu, logVar):
+        # Reparameterization takes in the input mu and logVar and sample the mu + std * eps
+        std = torch.exp(logVar / 2).to(self.device)
+        eps = torch.normal(mean=torch.tensor([0 for i in range(std.shape[1])]).float(), std=1).to(self.device)
+        if self.beta != 0:  # beta VAE
+            return mu + eps * std
+        else:  # regular AE
+            return mu
+
+    def encode(self, input):
+        z = self.encoder(input)
+        mu = self.mu(z)
+        logVar = self.logVar(z)
+        if self.training:
+            z = self.reparametrize(mu, logVar)
+        else:
+            z = mu
+        output = self.decoder(z)
+        return mu, logVar, output
+
     def forward(self, image0, image1=None):
-        z0 = self.encoder(image0)
+        mu, logVar, z0 = self.encode(image0)
         zu0 = torch.matmul(z0, self.U)
         zv0 = torch.matmul(z0, self.V)
         if image1 is not None:
-            z1 = self.encoder(image1)
+            _, _, z1 = self.encode(image1)
             encoded = torch.matmul(z1, self.U) + zv0
             reconstructed = self.decoder(encoded)
             return reconstructed
         else:
             encoded = zu0 + zv0
             reconstructed = self.decoder(encoded)
-            return reconstructed, z0, zu0, zv0
+            return reconstructed, z0, zu0, zv0, mu, logVar
 
     def _init_mixed_effect_model(self):
         self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device)
@@ -77,10 +106,15 @@ class AE_adni(nn.Module):
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
-    def loss(input_, reconstructed):
+    def recon_loss(input_, reconstructed):
         # recon_loss = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
         recon_loss = torch.mean((reconstructed - input_) ** 2)
         return recon_loss
+
+    @staticmethod
+    def kl_loss(mu, logVar):
+        kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
+        return kl_divergence
 
     def train_(self, train_data_loader, test_data_loader, optimizer, num_epochs):
         self.to(self.device)
@@ -96,7 +130,7 @@ class AE_adni(nn.Module):
 
             logger.info('#### Epoch {}/{} ####'.format(epoch + 1, num_epochs))
 
-            tloss = 0.0
+            tloss = np.array([0., 0., 0.])
             nb_batches = 0
 
             s_tp, Z, ZU, ZV = None, None, None, None
@@ -107,8 +141,11 @@ class AE_adni(nn.Module):
 
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device).float()
-                reconstructed, z, zu, zv = self.forward(input_)
-                self_reconstruction_loss = self.loss(input_, reconstructed)
+                reconstructed, z, zu, zv, mu, logVar = self.forward(input_)
+                self_reconstruction_loss = self.recon_loss(input_, reconstructed)
+
+                # kl divergence
+                kl_loss = self.kl_loss(mu, logVar)
 
                 # store Z, ZU, ZV
                 subject = torch.tensor([[s for s in data[5]]], device=self.device)
@@ -135,12 +172,15 @@ class AE_adni(nn.Module):
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
                 else:
+                    cross_reconstruction_loss = 0.
                     recon_loss = self_reconstruction_loss
 
-                loss = recon_loss
+                loss = recon_loss + self.beta * kl_loss
                 loss.backward()
                 optimizer.step()
-                tloss += float(self_reconstruction_loss)
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_loss)
+                tloss[2] += float(cross_reconstruction_loss)
                 nb_batches += 1
 
             # comply with generative model
@@ -155,7 +195,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch == num_epochs - 1 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 5 else 0.0
             if epoch_loss <= best_loss:
                 es = 0
                 best_loss = epoch_loss
@@ -169,7 +209,7 @@ class AE_adni(nn.Module):
         self.to(self.device)
         self.training = False
         self.eval()
-        tloss = 0.0
+        tloss = np.array([0., 0., 0.])
         nb_batches = 0
 
         with torch.no_grad():
@@ -179,8 +219,11 @@ class AE_adni(nn.Module):
 
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device).float()
-                reconstructed, z, zu, zv = self.forward(input_)
+                reconstructed, z, zu, zv, mu, logVar = self.forward(input_)
                 self_reconstruction_loss = self.loss(input_, reconstructed)
+
+                # kl divergence
+                kl_loss = self.kl_loss(mu, logVar)
 
                 # cross-reconstruction loss
                 baseline_age = data[3]
@@ -195,10 +238,13 @@ class AE_adni(nn.Module):
                     cross_reconstruction_loss = self.loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
                 else:
+                    cross_reconstruction_loss = 0.
                     recon_loss = self_reconstruction_loss
 
-                loss = recon_loss
-                tloss += float(loss)
+                # loss = recon_loss + self.beta * kl_loss
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_loss)
+                tloss[2] += float(cross_reconstruction_loss)
                 nb_batches += 1
 
         loss = tloss / nb_batches
@@ -364,7 +410,7 @@ class beta_VAE(nn.Module):
 
             logger.info('#### Epoch {}/{} ####'.format(epoch + 1, num_epochs))
 
-            tloss = 0.0
+            tloss = np.array([0., 0.])
             nb_batches = 0
 
             for data in train_data_loader:
@@ -380,7 +426,8 @@ class beta_VAE(nn.Module):
                 loss = self_reconstruction_loss + self.beta * kl_divergence
                 loss.backward()
                 optimizer.step()
-                tloss += float(self_reconstruction_loss)
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_divergence)
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
