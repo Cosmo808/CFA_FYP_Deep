@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import matplotlib.pyplot as plt
 from time import time
 import numpy as np
 from tqdm import tqdm
@@ -130,7 +131,7 @@ class AE_adni(nn.Module):
 
             logger.info('#### Epoch {}/{} ####'.format(epoch + 1, num_epochs))
 
-            tloss = np.array([0., 0., 0.])
+            tloss = np.array([0., 0., 0., 0.])
             nb_batches = 0
 
             s_tp, Z, ZU, ZV = None, None, None, None
@@ -181,6 +182,7 @@ class AE_adni(nn.Module):
                 tloss[0] += float(self_reconstruction_loss)
                 tloss[1] += float(kl_loss)
                 tloss[2] += float(cross_reconstruction_loss)
+                tloss[-1] += float(loss)
                 nb_batches += 1
 
             # comply with generative model
@@ -196,9 +198,9 @@ class AE_adni(nn.Module):
 
             epoch_loss = tloss / nb_batches
             test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 5 else 0.0
-            if epoch_loss <= best_loss:
+            if epoch_loss[-1] <= best_loss:
                 es = 0
-                best_loss = epoch_loss
+                best_loss = epoch_loss[-1]
             else:
                 es += 1
 
@@ -335,6 +337,24 @@ class AE_adni(nn.Module):
         utv_norm_2 = torch.pow(torch.norm(utv, p='fro'), 2).cpu().detach().numpy()
         logger.info(f"||U^T * V||^2 = {utv_norm_2:.4}, log p(b) = {log_pb:.3}")
 
+    @staticmethod
+    def plot_z_distribution(Z, ZU, ZV):
+        min_z, mean_z, max_z = [], [], []
+        fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
+        plt.subplots_adjust(wspace=0.1, hspace=0)
+        for i in range(dim_z):
+            z = Z[:, i].cpu().detach().numpy()
+            axes[i].hist(z, bins=70, density=True)
+            axes[i].set_title('{}-th dim'.format(i + 1))
+            axes[i].set_xlabel(f"Min: {np.min(z):.4}\nMean: {np.mean(z):.4}\nMax: {np.max(z):.4}")
+            min_z.append(np.min(z))
+            mean_z.append(np.mean(z))
+            max_z.append(np.max(z))
+        for axe in axes:
+            axe.set_yticks([])
+            axe.set_xlim(left=-1, right=1)
+        plt.savefig('visualization/Z_distribution.png', bbox_inches='tight')
+        plt.close()
 
 class beta_VAE(nn.Module):
     def __init__(self, input_dim, left_right=0):
@@ -410,7 +430,7 @@ class beta_VAE(nn.Module):
 
             logger.info('#### Epoch {}/{} ####'.format(epoch + 1, num_epochs))
 
-            tloss = np.array([0., 0.])
+            tloss = np.array([0., 0., 0.])
             nb_batches = 0
 
             for data in train_data_loader:
@@ -428,13 +448,14 @@ class beta_VAE(nn.Module):
                 optimizer.step()
                 tloss[0] += float(self_reconstruction_loss)
                 tloss[1] += float(kl_divergence)
+                tloss[-1] += float(loss)
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
 
-            if epoch_loss <= best_loss:
+            if epoch_loss[-1] <= best_loss:
                 es = 0
-                best_loss = epoch_loss
+                best_loss = epoch_loss[-1]
             else:
                 es += 1
 
