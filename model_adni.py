@@ -19,7 +19,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-dim_z = 16
+dim_z = 8
 
 
 class AE_adni(nn.Module):
@@ -28,33 +28,39 @@ class AE_adni(nn.Module):
         nn.Module.__init__(self)
         self.name = 'AE_adni'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.beta = 5
+        self.kl = 10
         self.gamma = 1
         self.lam = 1
         self.input_dim = input_dim
         self.left_right = left_right
 
         self.encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(self.input_dim, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
         )
 
         self.mu = nn.Sequential(
-            nn.Linear(4096, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Linear(128, dim_z),
+            nn.Tanh(),
         )
 
         self.logVar = nn.Sequential(
-            nn.Linear(4096, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Linear(128, dim_z),
+            # nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(dim_z, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(dim_z, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(4096, self.input_dim),
+            nn.Linear(128, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.input_dim),
             nn.ReLU()
         )
 
@@ -63,11 +69,19 @@ class AE_adni(nn.Module):
         self.U, self.V = None, None
         self.sigma0_2, self.sigma1_2, self.sigma2_2 = None, None, None
 
+    def _init_mixed_effect_model(self):
+        self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device)
+        self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
+        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)], device=self.device)).float()
+        self.V = torch.eye(dim_z, device=self.device) - self.U
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1., 4., 1.
+        self.D = torch.eye(self.Y.size()[1], device=self.device).float()
+
     def reparametrize(self, mu, logVar):
         # Reparameterization takes in the input mu and logVar and sample the mu + std * eps
         std = torch.exp(logVar / 2).to(self.device)
         eps = torch.normal(mean=torch.tensor([0 for i in range(std.shape[1])]).float(), std=1).to(self.device)
-        if self.beta != 0:  # beta VAE
+        if self.kl != 0:  # beta VAE
             return mu + eps * std
         else:  # regular AE
             return mu
@@ -80,8 +94,7 @@ class AE_adni(nn.Module):
             z = self.reparametrize(mu, logVar)
         else:
             z = mu
-        output = self.decoder(z)
-        return mu, logVar, output
+        return mu, logVar, z
 
     def forward(self, image0, image1=None):
         mu, logVar, z0 = self.encode(image0)
@@ -96,15 +109,6 @@ class AE_adni(nn.Module):
             encoded = zu0 + zv0
             reconstructed = self.decoder(encoded)
             return reconstructed, z0, zu0, zv0, mu, logVar
-
-    def _init_mixed_effect_model(self):
-        self.beta = torch.rand(size=[self.X.size()[1], dim_z], device=self.device)
-        self.b = torch.normal(mean=0, std=1, size=[self.Y.size()[1], dim_z], device=self.device)
-        self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
-                                         device=self.device)).float()
-        self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.5, 1.0, 0.5
-        self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     @staticmethod
     def recon_loss(input_, reconstructed):
@@ -161,28 +165,28 @@ class AE_adni(nn.Module):
                     ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
-                baseline_age = data[3]
-                delta_age = data[2] - baseline_age
-                index0, index1 = self.generate_sample(baseline_age, delta_age)
-                image0 = image[index0]
-                image1 = image[index1]
-                if index0:
-                    input0_ = Variable(image0).to(self.device).float()
-                    input1_ = Variable(image1).to(self.device).float()
-                    reconstructed = self.forward(input0_, input1_)
-                    cross_reconstruction_loss = self.loss(input0_, reconstructed)
-                    recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
-                else:
-                    cross_reconstruction_loss = 0.
-                    recon_loss = self_reconstruction_loss
+                # baseline_age = data[3]
+                # delta_age = data[2] - baseline_age
+                # index0, index1 = self.generate_sample(baseline_age, delta_age)
+                # image0 = image[index0]
+                # image1 = image[index1]
+                # if index0:
+                #     input0_ = Variable(image0).to(self.device).float()
+                #     input1_ = Variable(image1).to(self.device).float()
+                #     reconstructed = self.forward(input0_, input1_)
+                #     cross_reconstruction_loss = self.loss(input0_, reconstructed)
+                #     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
+                # else:
+                cross_reconstruction_loss = 0.
+                recon_loss = self_reconstruction_loss
 
-                loss = recon_loss + self.beta * kl_loss
+                loss = recon_loss + self.kl * kl_loss
                 loss.backward()
                 optimizer.step()
-                tloss[0] += np.round(float(self_reconstruction_loss), 3)
-                tloss[1] += np.round(float(kl_loss), 3)
-                tloss[2] += np.round(float(cross_reconstruction_loss), 3)
-                tloss[-1] += np.round(float(loss), 3)
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_loss)
+                tloss[2] += float(cross_reconstruction_loss)
+                tloss[-1] += float(loss)
                 nb_batches += 1
 
             # comply with generative model
@@ -191,13 +195,16 @@ class AE_adni(nn.Module):
             # sort_index2 = sorted_s_tp[:, 0].sort()[1]
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
-            if epoch > 50:
+            self.plot_distribution(Z, title='Z')
+            self.plot_distribution(ZU, title='ZU')
+            self.plot_distribution(ZV, title='ZV')
+            if epoch > 300:
                 print('Start aligning...')
                 self.generative_parameter_update(Z, ZU, ZV)
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 5 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -205,7 +212,7 @@ class AE_adni(nn.Module):
                 es += 1
 
             end_time = time()
-            logger.info(f"Epoch loss (train/test): {epoch_loss:.4}/{test_loss:.4} take {end_time - start_time:.3} seconds\n")
+            logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
 
     def evaluate(self, test_data_loader):
         self.to(self.device)
@@ -222,7 +229,7 @@ class AE_adni(nn.Module):
                 # self-reconstruction loss
                 input_ = Variable(image).to(self.device).float()
                 reconstructed, z, zu, zv, mu, logVar = self.forward(input_)
-                self_reconstruction_loss = self.loss(input_, reconstructed)
+                self_reconstruction_loss = self.recon_loss(input_, reconstructed)
 
                 # kl divergence
                 kl_loss = self.kl_loss(mu, logVar)
@@ -244,9 +251,9 @@ class AE_adni(nn.Module):
                     recon_loss = self_reconstruction_loss
 
                 # loss = recon_loss + self.beta * kl_loss
-                tloss[0] += np.round(float(self_reconstruction_loss), 3)
-                tloss[1] += np.round(float(kl_loss), 3)
-                tloss[2] += np.round(float(cross_reconstruction_loss), 3)
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_loss)
+                tloss[2] += float(cross_reconstruction_loss)
                 nb_batches += 1
 
         loss = tloss / nb_batches
@@ -288,7 +295,7 @@ class AE_adni(nn.Module):
         xt_zu = torch.matmul(xt, ZU)
         yt_zv = torch.matmul(yt, ZV)
 
-        for epoch in range(5):
+        for epoch in range(10):
             # updata beta and b
             H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
             H_inv = torch.inverse(H)
@@ -312,7 +319,7 @@ class AE_adni(nn.Module):
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
             # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
-            for i in range(1):
+            for i in range(5):
                 dbbd = torch.matmul(torch.inverse(self.D),
                                     torch.matmul(self.b,
                                                  torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D))))
@@ -322,7 +329,7 @@ class AE_adni(nn.Module):
             # update U and V
             zt_xbeta = torch.matmul(zt, torch.matmul(X, self.beta))
             zt_yb = torch.matmul(zt, torch.matmul(Y, self.b))
-            for i in range(50):
+            for i in range(5):
                 vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
                 uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
                 self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
@@ -338,7 +345,7 @@ class AE_adni(nn.Module):
         logger.info(f"||U^T * V||^2 = {utv_norm_2:.4}, log p(b) = {log_pb:.3}")
 
     @staticmethod
-    def plot_z_distribution(Z, ZU, ZV):
+    def plot_distribution(Z, title):
         min_z, mean_z, max_z = [], [], []
         fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
         plt.subplots_adjust(wspace=0.1, hspace=0)
@@ -353,7 +360,7 @@ class AE_adni(nn.Module):
         for axe in axes:
             axe.set_yticks([])
             axe.set_xlim(left=-1, right=1)
-        plt.savefig('visualization/Z_distribution.png', bbox_inches='tight')
+        plt.savefig('visualization/{}_distribution.png'.format(title), bbox_inches='tight')
         plt.close()
 
 class beta_VAE(nn.Module):
@@ -368,26 +375,32 @@ class beta_VAE(nn.Module):
         self.left_right = left_right
 
         self.encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(self.input_dim, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
         )
 
         self.mu = nn.Sequential(
-            nn.Linear(4096, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Linear(128, dim_z),
+            # nn.Tanh(),
         )
 
         self.logVar = nn.Sequential(
-            nn.Linear(4096, dim_z),
-            nn.BatchNorm1d(dim_z),
+            nn.Linear(128, dim_z),
+            # nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(dim_z, 4096),
-            nn.BatchNorm1d(4096),
+            nn.Linear(dim_z, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(4096, self.input_dim),
+            nn.Linear(128, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.input_dim),
             nn.ReLU()
         )
 
@@ -446,9 +459,9 @@ class beta_VAE(nn.Module):
                 loss = self_reconstruction_loss + self.beta * kl_divergence
                 loss.backward()
                 optimizer.step()
-                tloss[0] += np.round(float(self_reconstruction_loss), 3)
-                tloss[1] += np.round(float(kl_divergence), 3)
-                tloss[-1] += np.round(float(loss), 3)
+                tloss[0] += float(self_reconstruction_loss)
+                tloss[1] += float(kl_divergence)
+                tloss[-1] += float(loss)
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
