@@ -389,7 +389,7 @@ class beta_VAE(nn.Module):
 
         self.mu = nn.Sequential(
             nn.Linear(128, dim_z),
-            # nn.Tanh(),
+            nn.Tanh(),
         )
 
         self.logVar = nn.Sequential(
