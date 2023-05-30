@@ -28,7 +28,7 @@ class AE_adni(nn.Module):
         nn.Module.__init__(self)
         self.name = 'AE_adni'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.kl = 10
+        self.kl = 5
         self.gamma = 1
         self.lam = 1
         self.input_dim = input_dim
@@ -165,20 +165,24 @@ class AE_adni(nn.Module):
                     ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
-                # baseline_age = data[3]
-                # delta_age = data[2] - baseline_age
-                # index0, index1 = self.generate_sample(baseline_age, delta_age)
-                # image0 = image[index0]
-                # image1 = image[index1]
-                # if index0:
-                #     input0_ = Variable(image0).to(self.device).float()
-                #     input1_ = Variable(image1).to(self.device).float()
-                #     reconstructed = self.forward(input0_, input1_)
-                #     cross_reconstruction_loss = self.loss(input0_, reconstructed)
-                #     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
-                # else:
-                cross_reconstruction_loss = 0.
-                recon_loss = self_reconstruction_loss
+                if epoch > 300:
+                    baseline_age = data[3]
+                    delta_age = data[2] - baseline_age
+                    index0, index1 = self.generate_sample(baseline_age, delta_age)
+                    image0 = image[index0]
+                    image1 = image[index1]
+                    if index0:
+                        input0_ = Variable(image0).to(self.device).float()
+                        input1_ = Variable(image1).to(self.device).float()
+                        reconstructed = self.forward(input0_, input1_)
+                        cross_reconstruction_loss = self.loss(input0_, reconstructed)
+                        recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
+                    else:
+                        cross_reconstruction_loss = 0.
+                        recon_loss = self_reconstruction_loss
+                else:
+                    cross_reconstruction_loss = 0.
+                    recon_loss = self_reconstruction_loss
 
                 loss = recon_loss + self.kl * kl_loss
                 loss.backward()
@@ -264,12 +268,12 @@ class AE_adni(nn.Module):
     def generate_sample(baseline_age, age):
         sample = []
         for index, base_a in enumerate(baseline_age):
-            match_ba = [i for i, ba in enumerate(baseline_age) if 1e-5 < np.abs(ba - base_a) <= 0.05]
+            match_ba = [i for i, ba in enumerate(baseline_age) if 1e-5 < np.abs(ba - base_a) <= 0.2]
             if match_ba:
                 sample.append([index, match_ba])
         result = []
         for index, match in sample:
-            match_age = [i for i in match if 1e-5 < np.abs(age[i] - age[index]) <= 0.05]
+            match_age = [i for i in match if 1e-5 < np.abs(age[i] - age[index]) <= 0.2]
             for ind in match_age:
                 result.append([index, ind])
         index0 = [idx[0] for idx in result]
