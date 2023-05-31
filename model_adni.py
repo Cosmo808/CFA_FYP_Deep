@@ -177,7 +177,7 @@ class AE_adni(nn.Module):
                         input0_ = Variable(image0).to(self.device).float()
                         input1_ = Variable(image1).to(self.device).float()
                         reconstructed = self.forward(input0_, input1_)
-                        cross_reconstruction_loss = self.loss(input0_, reconstructed)
+                        cross_reconstruction_loss = self.recon_loss(input0_, reconstructed)
                         recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
                     else:
                         cross_reconstruction_loss = 0.
@@ -250,7 +250,7 @@ class AE_adni(nn.Module):
                     input0_ = Variable(image0).to(self.device).float()
                     input1_ = Variable(image1).to(self.device).float()
                     reconstructed = self.forward(input0_, input1_)
-                    cross_reconstruction_loss = self.loss(input0_, reconstructed)
+                    cross_reconstruction_loss = self.recon_loss(input0_, reconstructed)
                     recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
                 else:
                     cross_reconstruction_loss = 0.
@@ -275,7 +275,7 @@ class AE_adni(nn.Module):
                 sample.append([index, match_ba])
         result = []
         for index, match in sample:
-            match_age = [i for i in match if 1e-5 < np.abs(age[i] - age[index]) <= 0.2]
+            match_age = [i for i in match if 1e-5 < np.abs(age[i] - age[index]) <= 0.5]
             for ind in match_age:
                 result.append([index, ind])
         index0 = [idx[0] for idx in result]
