@@ -96,8 +96,7 @@ class Data_preprocess_ADNI:
 
         # sort index
         self.label_idx_train, self.label_idx_test = None, None
-        self.idx1_train, self.idx1_test = None, None
-        self.idx2_train, self.idx2_test = None, None
+        self.idx_train, self.idx_test = None, None
 
     def generate_demo_train_test(self, fold):
         # load data
@@ -131,21 +130,14 @@ class Data_preprocess_ADNI:
             subject_train, subject_test = subject_train[self.label_idx_train].squeeze(), subject_test[self.label_idx_test].squeeze()
 
         # get sort data index
-        idx1_train, idx1_test = timepoint_train.sort()[1], timepoint_test.sort()[1]
-        sorted_train, sorted_test = subject_train[idx1_train], subject_test[idx1_test]
-        idx2_train, idx2_test = sorted_train.sort()[1], sorted_test.sort()[1]
-        self.idx1_train, self.idx1_test = idx1_train, idx1_test
-        self.idx2_train, self.idx2_test = idx2_train, idx2_test
-        # sort data
-        age_train, age_test = age_train[idx1_train], age_test[idx1_test]
-        label_train, label_test = label_train[idx1_train], label_test[idx1_test]
-        timepoint_train, timepoint_test = timepoint_train[idx1_train], timepoint_test[idx1_test]
-        subject_train, subject_test = subject_train[idx1_train], subject_test[idx1_test]
+        idx_train, idx_test = np.lexsort((timepoint_train.numpy(), subject_train.numpy())), np.lexsort((timepoint_test.numpy(), subject_test.numpy()))
+        self.idx_train, self.idx_test = idx_train, idx_test
 
-        age_train, age_test = age_train[idx2_train], age_test[idx2_test]
-        label_train, label_test = label_train[idx2_train], label_test[idx2_test]
-        timepoint_train, timepoint_test = timepoint_train[idx2_train], timepoint_test[idx2_test]
-        subject_train, subject_test = subject_train[idx2_train], subject_test[idx2_test]
+        # sort data
+        age_train, age_test = age_train[idx_train], age_test[idx_test]
+        label_train, label_test = label_train[idx_train], label_test[idx_test]
+        timepoint_train, timepoint_test = timepoint_train[idx_train], timepoint_test[idx_test]
+        subject_train, subject_test = subject_train[idx_train], subject_test[idx_test]
 
         baseline_age_train, baseline_age_test = [], []
         s_old = None
@@ -184,7 +176,7 @@ class Data_preprocess_ADNI:
             return demo_test, demo_train
 
     def generate_thick_train_test(self, fold):
-        if self.idx1_train is None:
+        if self.idx_train is None:
             _, _ = self.generate_demo_train_test(fold)
 
         left_thick_train = self.thickness_train['lthick_regular'][:, :self.number]
@@ -199,8 +191,8 @@ class Data_preprocess_ADNI:
             right_thick_train, right_thick_test = right_thick_train[label_idx_train], right_thick_test[label_idx_test]
 
         print('Start sorting index...')
-        left_thick_train, right_thick_train = left_thick_train[self.idx1_train], right_thick_train[self.idx1_train]
-        left_thick_test, right_thick_test = left_thick_test[self.idx2_test], right_thick_test[self.idx2_test]
+        left_thick_train, right_thick_train = left_thick_train[self.idx_train], right_thick_train[self.idx_train]
+        left_thick_test, right_thick_test = left_thick_test[self.idx_test], right_thick_test[self.idx_test]
         thick_train = {'left': left_thick_train, 'right': right_thick_train}
         thick_test = {'left': left_thick_test, 'right': right_thick_test}
 

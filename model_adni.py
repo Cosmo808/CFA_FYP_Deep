@@ -210,7 +210,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -224,7 +224,7 @@ class AE_adni(nn.Module):
         self.to(self.device)
         self.training = False
         self.eval()
-        tloss = np.array([0., 0., 0.])
+        tloss = np.array([0., 0., 0., 0.])
         nb_batches = 0
 
         with torch.no_grad():
@@ -256,10 +256,11 @@ class AE_adni(nn.Module):
                     cross_reconstruction_loss = 0.
                     recon_loss = self_reconstruction_loss
 
-                # loss = recon_loss + self.beta * kl_loss
+                loss = recon_loss + self.beta * kl_loss
                 tloss[0] += float(self_reconstruction_loss)
                 tloss[1] += float(kl_loss)
                 tloss[2] += float(cross_reconstruction_loss)
+                tloss[-1] += float(loss)
                 nb_batches += 1
 
         loss = tloss / nb_batches
@@ -369,6 +370,7 @@ class AE_adni(nn.Module):
         plt.savefig('visualization/{}_distribution.png'.format(title), bbox_inches='tight')
         plt.close()
 
+
 class beta_VAE(nn.Module):
     def __init__(self, input_dim, left_right=0):
         super(beta_VAE, self).__init__()
@@ -470,7 +472,7 @@ class beta_VAE(nn.Module):
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -629,8 +631,8 @@ class ML_VAE(nn.Module):
     
 
     def loss(self, mu, logVar, reconstructed, input_):
-        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
-        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
+        recon_error = torch.mean((reconstructed - input_) ** 2)
         return recon_error, kl_divergence
 
     def train_(self, data_loader, test_data_loader, optimizer, num_epochs):
@@ -683,7 +685,7 @@ class ML_VAE(nn.Module):
             self.plot_distribution(ZV, title='ZV')
             
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -743,6 +745,7 @@ class ML_VAE(nn.Module):
             axe.set_xlim(left=-1, right=1)
         plt.savefig('visualization/{}_distribution.png'.format(title), bbox_inches='tight')
 
+
 class rank_VAE(nn.Module):
     def __init__(self, input_dim, left_right=0):
         super(rank_VAE, self).__init__()
@@ -750,7 +753,7 @@ class rank_VAE(nn.Module):
         self.name = 'rank_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.beta = 5
-        self.gamma = 10
+        self.gamma = 1
         self.input_dim = input_dim
         self.left_right = left_right
 
@@ -813,8 +816,8 @@ class rank_VAE(nn.Module):
         return zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded
 
     def loss(self, mu, logVar, reconstructed, input_):
-        kl_divergence = 0.5 * torch.sum(-1 - logVar + mu.pow(2) + logVar.exp()) / mu.shape[0]
-        recon_error = torch.sum((reconstructed - input_) ** 2) / input_.shape[0]
+        kl_divergence = 0.5 * torch.mean(-1 - logVar + mu.pow(2) + logVar.exp())
+        recon_error = torch.mean((reconstructed - input_) ** 2)
         return recon_error, kl_divergence
 
     def rank_loss(self, subject, timepoint, zpsi):
@@ -834,7 +837,7 @@ class rank_VAE(nn.Module):
                 rank_tp = torch.argsort(select_tp)
                 select_zpsi = zpsi[index].squeeze()
                 rand_zpsi = torch.argsort(select_zpsi)
-                rank_loss += torch.sum((rand_zpsi - rank_tp) ** 2)
+                rank_loss += torch.mean((rand_zpsi - rank_tp).float() ** 2)
                 num += len(index)
             return rank_loss / num
 
@@ -893,7 +896,7 @@ class rank_VAE(nn.Module):
             self.plot_distribution(ZV, title='ZV')
             
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -945,7 +948,7 @@ class rank_VAE(nn.Module):
         min_z, mean_z, max_z = [], [], []
         fig, axes = plt.subplots(1, dim_z, figsize=(4 * dim_z, 4))
         plt.subplots_adjust(wspace=0.1, hspace=0)
-        for i in range(dim_z):
+        for i in range(Z.size()[-1]):
             z = Z[:, i].cpu().detach().numpy()
             axes[i].hist(z, bins=70, density=True)
             axes[i].set_title('{}-th dim'.format(i + 1))
@@ -958,6 +961,7 @@ class rank_VAE(nn.Module):
             axe.set_xlim(left=-1, right=1)
         plt.savefig('visualization/{}_distribution.png'.format(title), bbox_inches='tight')
 
+
 class LNE(nn.Module):
     def __init__(self, input_dim, left_right=0):
         super(LNE, self).__init__()
@@ -967,6 +971,8 @@ class LNE(nn.Module):
         self.batch_size = 128
         self.lambda_proto = 1.0
         self.lambda_dir = 1.0
+        self.input_dim = input_dim
+        self.left_right = left_right
 
         self.encoder = nn.Sequential(
             nn.Linear(self.input_dim, 2048),
@@ -979,7 +985,7 @@ class LNE(nn.Module):
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(dim_z * 2, 128),
+            nn.Linear(dim_z, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 2048),
@@ -1162,7 +1168,7 @@ class LNE(nn.Module):
                 self.eval()
                 z1_list = []
                 for data in data_loader:
-                    image = torch.tensor([[np.load(path)] for path in data[0]], device=self.device).float()
+                    image = torch.tensor(data[self.left_right]).to(self.device).float()
                     z1 = self.encoder(image)
                     z1_list.append(z1.view(image.shape[0], -1))
                 z1_list = torch.cat(z1_list).detach().cpu().numpy()
@@ -1184,7 +1190,7 @@ class LNE(nn.Module):
             # training
             for iter, data in tqdm(enumerate(data_loader)):
                 # data: 0 lthick, 1 rthick, 2 age, 3 baseline_age, 4 label, 5 subject, 6 timepoint
-                image = torch.tensor(data[self.left_right]).to(self.device).float()
+                image = Variable(data[self.left_right]).to(self.device).float()
                 age = torch.tensor(data[2]).to(self.device).float().squeeze()
                 optimizer.zero_grad()
                 
@@ -1195,13 +1201,14 @@ class LNE(nn.Module):
                 img1 = image[idx1]
                 img2 = image[idx2]
                 interval = age[idx2] - age[idx1]
-                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in
-                               range(len(self.N_km))]
+                cluster_ids = [cluster_ids_list[m][iter * self.batch_size:(iter + 1) * self.batch_size] for m in range(len(self.N_km))]
                 cluster_ids = [c[:-1] for c in cluster_ids]
 
                 zs, recons = self.forward(img1, img2)
                 adj_mx = self.build_graph_batch(zs)
                 delta_z, delta_h = self.compute_social_pooling_delta_z_batch(zs, interval, adj_mx)
+
+                print(data[5], data[6], age)
 
                 loss_recon = 0.5 * (self.compute_recon_loss(img1, recons[0]) + self.compute_recon_loss(img2, recons[1]))
                 loss_dir = self.compute_direction_loss(delta_z, delta_h)
@@ -1209,6 +1216,7 @@ class LNE(nn.Module):
 
                 loss = loss_recon + self.lambda_dir * loss_dir + self.lambda_proto * loss_proto
                 loss.backward()
+                print(loss_recon.item(), loss_dir, loss_proto)
 
                 optimizer.step()
                 tloss[0] += float(loss_recon)
@@ -1218,7 +1226,7 @@ class LNE(nn.Module):
                 nb_batches += 1
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 100 else 0.0
+            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
