@@ -9,7 +9,7 @@ from dataset import Dataset_adni
 from data_preprocess import Data_preprocess_ADNI
 import argparse
 import model_adni
-
+from utils import adni_utils
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -42,7 +42,6 @@ number = input_para.number
 label = input_para.label
 left_right = input_para.lor
 
-
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/2 #####\n")
@@ -63,16 +62,16 @@ if __name__ == '__main__':
     train = Dataset(thick_train['left'], thick_train['right'], demo_train['age'], demo_train['baseline_age'],
                     demo_train['label'], demo_train['subject'], demo_train['timepoint'])
     test = Dataset(thick_test['left'], thick_test['right'], demo_test['age'], demo_test['baseline_age'],
-                    demo_test['label'], demo_test['subject'], demo_test['timepoint'])
+                   demo_test['label'], demo_test['subject'], demo_test['timepoint'])
 
     train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False,
                                                num_workers=0, drop_last=False)
     test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=False,
-                                               num_workers=0, drop_last=False)
+                                              num_workers=0, drop_last=False)
     print('Generating data loader finished...')
 
     # training
-    autoencoder = model_adni.AE_adni(input_dim, left_right)
+    autoencoder = model_adni.beta_VAE(input_dim, left_right)
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
@@ -92,3 +91,9 @@ if __name__ == '__main__':
     torch.save(autoencoder, 'model/{}_fold_{}_{}_{}'.format(fold, label, left_right, autoencoder.name))
     logger.info(f'##### Fold {fold + 1}/2 finished #####\n')
     logger.info('Model saved in model/{}_fold_{}_{}_{}'.format(fold, label, left_right, autoencoder.name))
+
+    adni_utils = adni_utils()
+    age_list, index = adni_utils.generate_age_index(demo_train['age'])
+    thick = thick_train[index]
+    _, _, Z, _ = autoencoder.encoder(thick)
+    adni_utils.global_pca_save(Z, age_list, autoencoder.name)
