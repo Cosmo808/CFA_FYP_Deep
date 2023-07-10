@@ -37,7 +37,10 @@ class AE_adni(nn.Module):
         self.left_right = left_right
 
         self.encoder = nn.Sequential(
-            nn.Linear(self.input_dim, 128),
+            nn.Linear(self.input_dim, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Dropout(),
@@ -49,8 +52,10 @@ class AE_adni(nn.Module):
             nn.Linear(dim_z, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(128, self.input_dim),
+            nn.Linear(128, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.input_dim),
             nn.ReLU()
         )
 
