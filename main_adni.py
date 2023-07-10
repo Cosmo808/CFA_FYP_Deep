@@ -42,6 +42,7 @@ number = input_para.number
 label = input_para.label
 left_right = input_para.lor
 
+
 if __name__ == '__main__':
     logger.info(f"Device is {device}")
     logger.info(f"##### Fold {fold + 1}/2 #####\n")
