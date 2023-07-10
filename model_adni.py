@@ -512,46 +512,6 @@ class beta_VAE(nn.Module):
         return loss
 
 
-class Classifier(nn.Module):
-    def __init__(self, target_num):
-        super(Classifier, self).__init__()
-        self.device = torch.device('cuda:0')
-
-        self.fc1 = nn.Linear(dim_z, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, target_num)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-    def train_(self, input_data, target_labels, test_data, test_target_labels, optimizer, num_epochs):
-        self.to(self.device)
-        criterion = nn.CrossEntropyLoss()
-        for epoch in range(num_epochs):
-            optimizer.zero_grad()
-            input_data = Variable(input_data).to(self.device).float()
-            target_labels = torch.tensor(target_labels, device=self.device, dtype=torch.long)
-            outputs = self.forward(input_data)
-            loss = criterion(outputs, target_labels)
-            loss.backward()
-            optimizer.step()
-
-        print(f"Epoch {epoch + 1} Loss: {loss.item()}")
-
-        print('Training finished...')
-
-        test_data = Variable(test_data).to(self.device).float()
-        test_outputs = self.forward(test_data)
-        predicted_class = torch.argmax(test_outputs, dim=1).cpu().detach().numpy()
-        test_target_labels[test_target_labels == 2] = 1
-        test_target_labels[test_target_labels == 3] = 2
-        accuracy = 1 - np.count_nonzero(predicted_class - test_target_labels.numpy()) / test_data.size()[0]
-        print(f"Prediction accuracy on test dataset is {accuracy:.3}")
-
-
 class ML_VAE(nn.Module):
     def __init__(self, input_dim, left_right=0):
         super(ML_VAE, self).__init__()
