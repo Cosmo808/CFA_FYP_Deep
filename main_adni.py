@@ -71,7 +71,7 @@ if __name__ == '__main__':
     print('Generating data loader finished...')
 
     # training
-    autoencoder = model_adni.beta_VAE(input_dim, left_right)
+    autoencoder = model_adni.AE_adni(input_dim, left_right)
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
@@ -94,6 +94,7 @@ if __name__ == '__main__':
 
     adni_utils = adni_utils()
     age_list, index = adni_utils.generate_age_index(demo_train['age'])
-    thick = thick_train[index]
+    thick = thick_train['left']
+    thick = torch.tensor(thick[index], device=device).float()
     _, _, Z, _ = autoencoder.encoder(thick)
     adni_utils.global_pca_save(Z, age_list, autoencoder.name)
