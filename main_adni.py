@@ -96,5 +96,5 @@ if __name__ == '__main__':
     age_list, index = adni_utils.generate_age_index(demo_train['age'])
     thick = thick_train['left']
     thick = torch.tensor(thick[index], device=device).float()
-    _, _, Z, _ = autoencoder.encoder(thick)
+    _, _, Z, _ = autoencoder.forward(thick)
     adni_utils.global_pca_save(Z, age_list, autoencoder.name)
