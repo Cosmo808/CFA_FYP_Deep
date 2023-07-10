@@ -21,7 +21,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
 
-dim_z = 8
+dim_z = 16
 
 
 class AE_adni(nn.Module):
@@ -47,12 +47,13 @@ class AE_adni(nn.Module):
 
         self.mu = nn.Sequential(
             nn.Linear(128, dim_z),
+            # nn.BatchNorm1d(dim_z),
             nn.Tanh(),
         )
 
         self.logVar = nn.Sequential(
             nn.Linear(128, dim_z),
-            # nn.BatchNorm1d(dim_z),
+            nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
@@ -77,7 +78,7 @@ class AE_adni(nn.Module):
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
                                          device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 1., 4., 1.
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 2., 0.5, 1.
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     def reparametrize(self, mu, logVar):
@@ -168,7 +169,7 @@ class AE_adni(nn.Module):
                     ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
-                if epoch > 300:
+                if epoch > 200:
                     baseline_age = data[3]
                     delta_age = data[2] - baseline_age
                     index0, index1 = self.generate_sample(baseline_age, delta_age)
@@ -202,11 +203,12 @@ class AE_adni(nn.Module):
             # sort_index2 = sorted_s_tp[:, 0].sort()[1]
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
-            self.plot_distribution(Z, title='Z')
-            self.plot_distribution(ZU, title='ZU')
-            self.plot_distribution(ZV, title='ZV')
-            if epoch > 300:
-                print('Start aligning...')
+            if epoch > 200:
+                if epoch % 5 == 0:
+                    self.plot_distribution(Z, title='Z')
+                    self.plot_distribution(ZU, title='ZU')
+                    self.plot_distribution(ZV, title='ZV')
+                    print('Distribution plotting finished...')
                 self.generative_parameter_update(Z, ZU, ZV)
                 print('Aligning finished...')
 
@@ -315,17 +317,16 @@ class AE_adni(nn.Module):
 
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
-            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D) \
-                       + 1e-5 * torch.eye(self.D.size()[0], device=self.device)
+            temp_mat = (self.sigma0_2 + self.sigma2_2) * yty - 2 * self.sigma0_2 * self.sigma2_2 * torch.inverse(self.D)
             temp_mat = torch.inverse(temp_mat)
             self.b = torch.matmul(temp_mat, self.sigma2_2 * yt_z_xbeta + self.sigma0_2 * yt_zv)
 
             # update variance parameter
             xbeta = torch.matmul(X, self.beta)
             yb = torch.matmul(Y, self.b)
-            # self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
+            self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
-            # self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
 
             for i in range(5):
                 dbbd = torch.matmul(torch.inverse(self.D),
@@ -337,7 +338,7 @@ class AE_adni(nn.Module):
             # update U and V
             zt_xbeta = torch.matmul(zt, torch.matmul(X, self.beta))
             zt_yb = torch.matmul(zt, torch.matmul(Y, self.b))
-            for i in range(5):
+            for i in range(1):
                 vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
                 uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
                 self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
@@ -367,7 +368,7 @@ class AE_adni(nn.Module):
             max_z.append(np.max(z))
         for axe in axes:
             axe.set_yticks([])
-            axe.set_xlim(left=-1, right=1)
+            axe.set_xlim(left=-2, right=2)
         plt.savefig('visualization/{}_distribution.png'.format(title), bbox_inches='tight')
         plt.close()
 
