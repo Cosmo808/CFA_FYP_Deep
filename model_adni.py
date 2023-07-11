@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from time import time
 import numpy as np
 from tqdm import tqdm
+from utils import adni_utils
 import math
 import logging
 import sys
@@ -20,6 +21,7 @@ format = logging.Formatter("%(message)s")
 ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(format)
 logger.addHandler(ch)
+adni_utils = adni_utils()
 
 dim_z = 16
 
@@ -30,7 +32,7 @@ class AE_adni(nn.Module):
         nn.Module.__init__(self)
         self.name = 'AE_adni'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.kl = 5
+        self.kl = 10
         self.gamma = 1
         self.lam = 1
         self.input_dim = input_dim
@@ -47,13 +49,13 @@ class AE_adni(nn.Module):
 
         self.mu = nn.Sequential(
             nn.Linear(128, dim_z),
-            # nn.BatchNorm1d(dim_z),
-            nn.Tanh(),
+            nn.BatchNorm1d(dim_z),
+            # nn.Tanh(),
         )
 
         self.logVar = nn.Sequential(
             nn.Linear(128, dim_z),
-            nn.BatchNorm1d(dim_z),
+            # nn.BatchNorm1d(dim_z),
         )
 
         self.decoder = nn.Sequential(
@@ -143,7 +145,7 @@ class AE_adni(nn.Module):
             nb_batches = 0
 
             s_tp, Z, ZU, ZV = None, None, None, None
-            for data in tqdm(train_data_loader):
+            for data in tqdm(adni_utils.merge_loader(train_data_loader, test_data_loader)):
                 # data: 0 lthick, 1 rthick, 2 age, 3 baseline_age, 4 label, 5 subject, 6 timepoint
                 image = data[self.left_right]
                 optimizer.zero_grad()

@@ -59,3 +59,9 @@ class adni_utils:
         plt.legend(files)
         plt.savefig('visualization/global_pca', bbox_inches='tight')
         plt.close()
+
+    @staticmethod
+    def merge_loader(*loaders):
+        for loader in loaders:
+            for data in loader:
+                yield data
