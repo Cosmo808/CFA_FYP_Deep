@@ -225,7 +225,7 @@ class AE_adni(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
-            return ZU, ZV
+        return ZU, ZV
 
     def evaluate(self, test_data_loader):
         self.to(self.device)

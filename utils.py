@@ -121,14 +121,14 @@ class RNN_classifier(nn.Module):
     def train_(self, ZV, demo, optimizer, num_epochs):
         self.to(ZV.device)
 
-        for epoch in num_epochs:
+        for epoch in range(num_epochs):
             optimizer.zero_grad()
 
             subject = demo['subject'][0]
             zv = ZV[0]
-            age = np.array(demo['age'][0])
-            label = np.array(demo['label'][0])
-            timepoint = np.array(demo['timepoint'][0])
+            age = np.array([demo['age'][0]])
+            label = np.array([demo['label'][0]])
+            timepoint = np.array([demo['timepoint'][0]])
 
             acc = []  # 1 true, 0 false
             age_diff = []
@@ -172,11 +172,11 @@ class RNN_classifier(nn.Module):
                                     else:
                                         acc.append(0)
 
-                    subject = demo['subject'][i]
-                    zv = ZV[i]
-                    age = np.array(demo['age'][i])
-                    label = np.array(demo['label'][i])
-                    timepoint = np.array(demo['timepoint'][i])
+                    subject = demo['subject'][0]
+                    zv = ZV[0]
+                    age = np.array([demo['age'][0]])
+                    label = np.array([demo['label'][0]])
+                    timepoint = np.array([demo['timepoint'][0]])
 
             accuracy = round(sum(acc) / len(acc), 3)
             print('#### Epoch {}/{}: accuracy {} ####'.format(epoch + 1, num_epochs, accuracy))
