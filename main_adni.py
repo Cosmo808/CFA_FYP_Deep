@@ -9,7 +9,7 @@ from dataset import Dataset_adni
 from data_preprocess import Data_preprocess_ADNI
 import argparse
 import model_adni
-from utils import adni_utils
+from utils import adni_utils, RNN_classifier
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -76,6 +76,12 @@ if __name__ == '__main__':
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(demo_train)
+        # X0, Y0 = data_generator.generate_XY(demo_train)
+        # X1, Y1 = data_generator.generate_XY(demo_test)
+        # X = torch.cat((X0, X1), dim=0)
+        # Y = torch.cat(
+        #     (torch.cat((Y0, torch.zeros(size=[Y0.size()[0], Y1.size()[1]])), 1), torch.cat((torch.zeros(size=[Y1.size()[0], Y0.size()[1]]), Y1), 1)), dim=0
+        # )
         X, Y = Variable(X).to(device).float(), Variable(Y).to(device).float()
         autoencoder.X, autoencoder.Y = X, Y
     if hasattr(autoencoder, 'batch_size'):
@@ -85,7 +91,7 @@ if __name__ == '__main__':
     print('Start training...')
     optimizer_fn = optim.Adam
     optimizer = optimizer_fn(autoencoder.parameters(), lr=lr)
-    autoencoder.train_(train_loader, test_loader, optimizer=optimizer, num_epochs=epochs)
+    ZU, ZV = autoencoder.train_(train_loader, test_loader, optimizer=optimizer, num_epochs=epochs)
 
     left_right = 'left' if left_right == 0 else 'right'
     label = 'CN' if label == 0 else 'MCI' if label == 1 else 'AD' if label == 2 else 'all'
@@ -94,8 +100,16 @@ if __name__ == '__main__':
     logger.info('Model saved in model/{}_fold_{}_{}_{}'.format(fold, label, left_right, autoencoder.name))
 
     adni_utils = adni_utils()
+    # spearman corr
     age_list, index = adni_utils.generate_age_index(demo_train['age'])
     thick = thick_train['left']
     thick = torch.tensor(thick[index], device=device).float()
-    _, _, Z, _, _, _ = autoencoder.forward(thick)
-    adni_utils.global_pca_save(Z, age_list, autoencoder.name)
+    _, _, ZU, _, _, _ = autoencoder.forward(thick)
+    adni_utils.global_pca_save(ZU, age_list, autoencoder.name)
+
+    # rnn classification
+    rnn = RNN_classifier(12, 16)
+    print('Start training classifier...')
+    optimizer_fn = optim.Adam
+    optimizer = optimizer_fn(rnn.parameters(), lr=lr)
+    rnn.train_(ZV, demo_train, optimizer=optimizer, num_epochs=200)

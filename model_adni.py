@@ -34,7 +34,7 @@ class AE_adni(nn.Module):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.kl = 10
         self.gamma = 1
-        self.lam = 1
+        self.lam = 10
         self.input_dim = input_dim
         self.left_right = left_right
 
@@ -80,7 +80,7 @@ class AE_adni(nn.Module):
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
                                          device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 2., 0.5, 1.
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.1, 0.25, 0.15
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     def reparametrize(self, mu, logVar):
@@ -145,7 +145,8 @@ class AE_adni(nn.Module):
             nb_batches = 0
 
             s_tp, Z, ZU, ZV = None, None, None, None
-            for data in tqdm(adni_utils.merge_loader(train_data_loader, test_data_loader)):
+            # for data in tqdm(adni_utils.merge_loader(train_data_loader, test_data_loader)):
+            for data in tqdm(train_data_loader):
                 # data: 0 lthick, 1 rthick, 2 age, 3 baseline_age, 4 label, 5 subject, 6 timepoint
                 image = data[self.left_right]
                 optimizer.zero_grad()
@@ -171,7 +172,7 @@ class AE_adni(nn.Module):
                     ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
-                if epoch > 200:
+                if epoch > 30:
                     baseline_age = data[3]
                     delta_age = data[2] - baseline_age
                     index0, index1 = self.generate_sample(baseline_age, delta_age)
@@ -205,7 +206,7 @@ class AE_adni(nn.Module):
             # sort_index2 = sorted_s_tp[:, 0].sort()[1]
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
-            if epoch > 200:
+            if epoch > 30:
                 if epoch % 5 == 0:
                     self.plot_distribution(Z, title='Z')
                     self.plot_distribution(ZU, title='ZU')
@@ -224,6 +225,7 @@ class AE_adni(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
+            return ZU, ZV
 
     def evaluate(self, test_data_loader):
         self.to(self.device)
@@ -309,13 +311,16 @@ class AE_adni(nn.Module):
 
         for epoch in range(10):
             # updata beta and b
-            H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
-            H_inv = torch.inverse(H)
-            xt_hi_x = torch.matmul(torch.matmul(xt, H_inv), X)
-            xt_hi_z = torch.matmul(torch.matmul(xt, H_inv), Z)
-            mat0 = xt_hi_x + 1 / self.sigma1_2 * xtx
-            mat1 = xt_hi_z + 1 / self.sigma1_2 * xt_zu
-            self.beta = torch.matmul(torch.inverse(mat0), mat1)
+            # H = torch.matmul(torch.matmul(Y, self.D), yt) + self.sigma0_2 * torch.eye(N, device=self.device).float()
+            # H_inv = torch.inverse(H)
+            # xt_hi_x = torch.matmul(torch.matmul(xt, H_inv), X)
+            # xt_hi_z = torch.matmul(torch.matmul(xt, H_inv), Z)
+            # mat0 = xt_hi_x + 1 / self.sigma1_2 * xtx
+            # mat1 = xt_hi_z + 1 / self.sigma1_2 * xt_zu
+            # self.beta = torch.matmul(torch.inverse(mat0), mat1)
+
+            mat0 = self.sigma1_2 * torch.matmul(xt, Z - torch.matmul(Y, self.b))
+            self.beta = 1 / (self.sigma0_2 + self.sigma1_2) * torch.matmul(xtx_inv, mat0 + self.sigma0_2 * xt_zu)
 
             xbeta = torch.matmul(X, self.beta)
             yt_z_xbeta = torch.matmul(yt, Z - xbeta)
@@ -329,6 +334,7 @@ class AE_adni(nn.Module):
             self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
             self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            self.sigma1_2 = (self.sigma0_2 + self.sigma2_2) * 5
 
             for i in range(5):
                 dbbd = torch.matmul(torch.inverse(self.D),
@@ -340,7 +346,7 @@ class AE_adni(nn.Module):
             # update U and V
             zt_xbeta = torch.matmul(zt, torch.matmul(X, self.beta))
             zt_yb = torch.matmul(zt, torch.matmul(Y, self.b))
-            for i in range(1):
+            for i in range(5):
                 vvt = torch.matmul(self.V, torch.transpose(self.V, 0, 1))
                 uut = torch.matmul(self.U, torch.transpose(self.U, 0, 1))
                 self.U = torch.matmul(torch.inverse(ztz + self.sigma1_2 * self.lam * vvt), zt_xbeta)
@@ -348,7 +354,7 @@ class AE_adni(nn.Module):
 
             xt_zu = torch.matmul(xt, torch.matmul(Z, self.U))
             yt_zv = torch.matmul(yt, torch.matmul(Z, self.V))
-
+        print(self.sigma0_2, self.sigma1_2, self.sigma2_2)
         bt_dinv_b = torch.matmul(torch.matmul(torch.transpose(self.b, 0, 1), torch.inverse(self.D)), self.b)
         log_pb = -1 / 2 * (dim_z * torch.log(torch.det(self.D)) + torch.trace(bt_dinv_b))
         utv = torch.matmul(torch.transpose(self.U, 0, 1), self.V)
