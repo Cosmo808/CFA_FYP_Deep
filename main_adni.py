@@ -111,5 +111,5 @@ if __name__ == '__main__':
     rnn = RNN_classifier(12, 16)
     print('Start training classifier...')
     optimizer_fn = optim.Adam
-    optimizer = optimizer_fn(rnn.parameters(), lr=lr)
-    rnn.train_(ZV, demo_train, optimizer=optimizer, num_epochs=200)
+    optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
+    rnn.train_(ZV.to(device).float(), demo_train, optimizer=optimizer_rnn, num_epochs=200)

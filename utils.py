@@ -84,7 +84,8 @@ class RNN_classifier(nn.Module):
         self.fc = nn.Linear(input_dim, 1)
 
     def forward(self, x):
-        x_bar, h = torch.zeros(size=x.size(), device=self.device), torch.zeros(size=x.size(), device=self.device)
+        x_bar = torch.zeros(size=x.size(), device=x.device, requires_grad=True)
+        h = torch.zeros(size=x.size(), device=x.device, requires_grad=True)
         x_bar[0] = x[0]
         h[0] = torch.tanh(torch.mul(x[0], self.weight_x[0]))
         x_bar[1] = torch.mul(h[0], self.weight_g[0]) + x[0]
@@ -159,7 +160,7 @@ class RNN_classifier(nn.Module):
                             elif label[j] == 3:
                                 for k in range(2, j + 1):
                                     pred = self.forward(torch.cat(
-                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim])
+                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
                                     loss = 1 - pred[j]
                                     loss.backward()
@@ -177,5 +178,5 @@ class RNN_classifier(nn.Module):
                     label = np.array([demo['label'][i]])
                     timepoint = np.array([demo['timepoint'][i]])
 
-            accuracy = round(sum(acc) / len(acc), 3)
-            print('#### Epoch {}/{}: accuracy {} ####'.format(epoch + 1, num_epochs, accuracy))
+            accuracy = round(sum(acc) / len(acc) * 100, 2)
+            print('#### Epoch {}/{} accuracy {}% ####'.format(epoch + 1, num_epochs, accuracy))
