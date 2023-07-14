@@ -122,10 +122,8 @@ class RNN_classifier(nn.Module):
         self.to(ZV.device)
 
         for epoch in range(num_epochs):
-            optimizer.zero_grad()
-
             subject = demo['subject'][0]
-            zv = ZV[0]
+            zv = ZV[0].view(1, -1)
             age = np.array([demo['age'][0]])
             label = np.array([demo['label'][0]])
             timepoint = np.array([demo['timepoint'][0]])
@@ -134,7 +132,7 @@ class RNN_classifier(nn.Module):
             age_diff = []
             for i in range(1, len(demo['age'])):
                 if demo['subject'][i] == subject:
-                    zv = torch.cat((zv, ZV[i]), 0)
+                    zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
                     age = np.append(age, demo['age'][i])
                     label = np.append(label, demo['label'][i])
                     timepoint = np.append(timepoint, demo['timepoint'][i])
@@ -143,10 +141,11 @@ class RNN_classifier(nn.Module):
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
                         for j in range(2, len(age)):
+                            optimizer.zero_grad()
                             if label[j] == 0:
                                 for k in range(2, j + 1):
                                     pred = self.forward(torch.cat(
-                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim])
+                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
                                     loss = pred[j]
                                     loss.backward()
@@ -172,11 +171,11 @@ class RNN_classifier(nn.Module):
                                     else:
                                         acc.append(0)
 
-                    subject = demo['subject'][0]
-                    zv = ZV[0]
-                    age = np.array([demo['age'][0]])
-                    label = np.array([demo['label'][0]])
-                    timepoint = np.array([demo['timepoint'][0]])
+                    subject = demo['subject'][i]
+                    zv = ZV[i].view(1, -1)
+                    age = np.array([demo['age'][i]])
+                    label = np.array([demo['label'][i]])
+                    timepoint = np.array([demo['timepoint'][i]])
 
             accuracy = round(sum(acc) / len(acc), 3)
             print('#### Epoch {}/{}: accuracy {} ####'.format(epoch + 1, num_epochs, accuracy))
