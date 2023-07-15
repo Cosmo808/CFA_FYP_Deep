@@ -207,7 +207,7 @@ class AE_adni(nn.Module):
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
             if epoch % 5 == 0:
-                test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader)
+                test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader, epoch)
                 print('Testing accuracy updated...')
             if epoch > 30:
                 if epoch % 5 == 0:
@@ -230,7 +230,7 @@ class AE_adni(nn.Module):
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
         return {'train': ZU.detach(), 'test': ZU_test.detach()}, {'train': ZV.detach(), 'test': ZV_test.detach()}
 
-    def evaluate(self, test_data_loader):
+    def evaluate(self, test_data_loader, epoch):
         self.to(self.device)
         self.training = False
         self.eval()
@@ -264,17 +264,21 @@ class AE_adni(nn.Module):
                     ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
-                baseline_age = data[3]
-                delta_age = data[2] - baseline_age
-                index0, index1 = self.generate_sample(baseline_age, delta_age)
-                image0 = image[index0]
-                image1 = image[index1]
-                if index0:
-                    input0_ = Variable(image0).to(self.device).float()
-                    input1_ = Variable(image1).to(self.device).float()
-                    reconstructed = self.forward(input0_, input1_)
-                    cross_reconstruction_loss = self.recon_loss(input0_, reconstructed)
-                    recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
+                if epoch > 30:
+                    baseline_age = data[3]
+                    delta_age = data[2] - baseline_age
+                    index0, index1 = self.generate_sample(baseline_age, delta_age)
+                    image0 = image[index0]
+                    image1 = image[index1]
+                    if index0:
+                        input0_ = Variable(image0).to(self.device).float()
+                        input1_ = Variable(image1).to(self.device).float()
+                        reconstructed = self.forward(input0_, input1_)
+                        cross_reconstruction_loss = self.recon_loss(input0_, reconstructed)
+                        recon_loss = (self_reconstruction_loss + cross_reconstruction_loss) / 2
+                    else:
+                        cross_reconstruction_loss = 0.
+                        recon_loss = self_reconstruction_loss
                 else:
                     cross_reconstruction_loss = 0.
                     recon_loss = self_reconstruction_loss
