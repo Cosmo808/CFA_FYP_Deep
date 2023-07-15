@@ -112,4 +112,5 @@ if __name__ == '__main__':
     print('Start training classifier...')
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
-    rnn.train_(ZV.to(device).float(), demo_train, optimizer=optimizer_rnn, num_epochs=200)
+    demo_all = {'train': demo_train, 'test': demo_test}
+    rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=200)

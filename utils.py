@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
+from time import time
 import scipy.stats as stats
 import logging
 import sys
@@ -78,30 +79,29 @@ class RNN_classifier(nn.Module):
         self.input_dim = input_dim
         self.weight_x = nn.Parameter(torch.ones(size=[layers_num, input_dim]))
         self.weight_g = nn.Parameter(torch.ones(size=[layers_num, input_dim]))
-        self.weight_h = nn.Parameter(torch.ones(size=[layers_num, input_dim]))
         self.weight_u = nn.Parameter(torch.ones(size=[layers_num, input_dim]))
         self.mask = nn.Parameter(torch.ones(size=[layers_num, input_dim]))
         self.fc = nn.Linear(input_dim, 1)
 
     def forward(self, x):
-        x_bar = torch.zeros(size=x.size(), device=x.device, requires_grad=True)
-        h = torch.zeros(size=x.size(), device=x.device, requires_grad=True)
-        x_bar[0] = x[0]
-        h[0] = torch.tanh(torch.mul(x[0], self.weight_x[0]))
-        x_bar[1] = torch.mul(h[0], self.weight_g[0]) + x[0]
+        x_bar = torch.zeros(size=x.size(), device=x.device, requires_grad=False)
+        h = torch.zeros(size=x.size(), device=x.device, requires_grad=False)
+        x_bar[0] = x[0].detach().clone()
+        h[0] = torch.tanh(torch.mul(x[0].detach().clone(), self.weight_x[0]))
+        x_bar[1] = torch.mul(h[0].detach().clone(), self.weight_g[0]) + x[0]
 
         for t in range(1, self.layers_num):
             x_trans = torch.mul(x[t], self.mask[t]) + torch.mul(x_bar[t], 1 - self.mask[t])
             u = torch.tanh(torch.mul(x_trans, self.weight_x[t]))
 
-            f = torch.sigmoid(torch.mul(h[t-1], self.weight_h[t]) + torch.mul(u, self.weight_u[t]))
+            f = torch.sigmoid(h[t-1].detach().clone() + torch.mul(u, self.weight_u[t]))
             f = torch.mul(f, self.mask[t])
 
-            h[t] = torch.mul(f, h[t-1]) + torch.min(1 - f, u)
+            h[t] = torch.mul(f, h[t-1]) + torch.mul(1 - f, u)
             h[t] = h[0] + torch.relu(h[t] - h[0])
 
             if t < self.layers_num - 1:
-                x_bar[t+1] = torch.mul(h[t], self.weight_g[t]) + x_trans
+                x_bar[t+1] = torch.mul(h[t].detach().clone(), self.weight_g[t]) + x_trans.detach().clone()
 
         pred = torch.sigmoid(self.fc(x_bar))
         return pred
@@ -119,10 +119,11 @@ class RNN_classifier(nn.Module):
                 zv = torch.cat((zv[:i], zeros, zv[i:]), 0)
         return zv, age, label, timepoint[:self.layers_num]
 
-    def train_(self, ZV, demo, optimizer, num_epochs):
+    def train_(self, ZV, ZV_test, demo_all, optimizer, num_epochs):
         self.to(ZV.device)
-
+        demo = demo_all['train']
         for epoch in range(num_epochs):
+            start_time = time()
             subject = demo['subject'][0]
             zv = ZV[0].view(1, -1)
             age = np.array([demo['age'][0]])
@@ -142,9 +143,9 @@ class RNN_classifier(nn.Module):
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
                         for j in range(2, len(age)):
-                            optimizer.zero_grad()
                             if label[j] == 0:
                                 for k in range(2, j + 1):
+                                    optimizer.zero_grad()
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
@@ -159,6 +160,7 @@ class RNN_classifier(nn.Module):
                                         acc.append(0)
                             elif label[j] == 3:
                                 for k in range(2, j + 1):
+                                    optimizer.zero_grad()
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
@@ -179,4 +181,59 @@ class RNN_classifier(nn.Module):
                     timepoint = np.array([demo['timepoint'][i]])
 
             accuracy = round(sum(acc) / len(acc) * 100, 2)
-            print('#### Epoch {}/{} accuracy {}% ####'.format(epoch + 1, num_epochs, accuracy))
+            accuracy_test = self.evaluate(ZV_test, demo_all['test'])
+            take_time = round(time() - start_time, 2)
+            print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy, accuracy_test, take_time))
+
+    def evaluate(self, ZV, demo):
+        self.to(self.device)
+        self.training = False
+        self.eval()
+
+        with torch.no_grad():
+            acc = []  # 1 true, 0 false
+            age_diff = []
+            for i in range(1, len(demo['age'])):
+                if demo['subject'][i] == subject:
+                    zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
+                    age = np.append(age, demo['age'][i])
+                    label = np.append(label, demo['label'][i])
+                    timepoint = np.append(timepoint, demo['timepoint'][i])
+                else:
+                    if len(age) >= 4:
+                        zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
+                                                                   torch.tensor(timepoint))
+                        for j in range(2, len(age)):
+                            if label[j] == 0:
+                                for k in range(2, j + 1):
+                                    pred = self.forward(torch.cat(
+                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
+                                         ), 0))
+                                    loss = pred[j]
+
+                                    age_diff.append(age[j] - age[k])
+                                    if loss < 0.5:
+                                        acc.append(1)
+                                    else:
+                                        acc.append(0)
+                            elif label[j] == 3:
+                                for k in range(2, j + 1):
+                                    pred = self.forward(torch.cat(
+                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
+                                         ), 0))
+                                    loss = 1 - pred[j]
+
+                                    age_diff.append(age[j] - age[k])
+                                    if loss > 0.5:
+                                        acc.append(1)
+                                    else:
+                                        acc.append(0)
+
+                    subject = demo['subject'][i]
+                    zv = ZV[i].view(1, -1)
+                    age = np.array([demo['age'][i]])
+                    label = np.array([demo['label'][i]])
+                    timepoint = np.array([demo['timepoint'][i]])
+
+        accuracy = round(sum(acc) / len(acc) * 100, 2)
+        return accuracy

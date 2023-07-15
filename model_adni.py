@@ -216,7 +216,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
+            test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -225,7 +225,7 @@ class AE_adni(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
-        return ZU.detach(), ZV.detach()
+        return {'train': ZU.detach(), 'test': ZU_test}, {'train': ZV.detach(), 'test': ZV_test}
 
     def evaluate(self, test_data_loader):
         self.to(self.device)
@@ -235,6 +235,7 @@ class AE_adni(nn.Module):
         nb_batches = 0
 
         with torch.no_grad():
+            s_tp, Z, ZU, ZV = None, None, None, None
             for data in test_data_loader:
                 # data: 0 lthick, 1 rthick, 2 age, 3 baseline_age, 4 label, 5 subject, 6 timepoint
                 image = data[self.left_right]
@@ -246,6 +247,18 @@ class AE_adni(nn.Module):
 
                 # kl divergence
                 kl_loss = self.kl_loss(mu, logVar)
+
+                # store Z, ZU, ZV
+                subject = torch.tensor([[s for s in data[5]]], device=self.device)
+                tp = torch.tensor([[tp for tp in data[6]]], device=self.device)
+                st = torch.transpose(torch.cat((subject, tp), 0), 0, 1)
+                if s_tp is None:
+                    s_tp, Z, ZU, ZV = st, z, zu, zv
+                else:
+                    s_tp = torch.cat((s_tp, st), 0)
+                    Z = torch.cat((Z, z), 0)
+                    ZU = torch.cat((ZU, zu), 0)
+                    ZV = torch.cat((ZV, zv), 0)
 
                 # cross-reconstruction loss
                 baseline_age = data[3]
@@ -272,7 +285,7 @@ class AE_adni(nn.Module):
 
         loss = tloss / nb_batches
         self.training = True
-        return loss
+        return loss, ZU.detach(), ZV.detach()
 
     @staticmethod
     def generate_sample(baseline_age, age):
