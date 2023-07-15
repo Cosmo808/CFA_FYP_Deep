@@ -216,7 +216,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0
+            test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader) if epoch >= num_epochs - 0 else 0.0, None, None
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
