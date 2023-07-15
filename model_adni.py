@@ -206,10 +206,11 @@ class AE_adni(nn.Module):
             # sort_index2 = sorted_s_tp[:, 0].sort()[1]
             # Z, ZU, ZV = Z[sort_index1], ZU[sort_index1], ZV[sort_index1]
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
+            if epoch % 5 == 0:
+                test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader)
+                print('Testing accuracy updated...')
             if epoch > 30:
                 if epoch % 5 == 0:
-                    test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader)
-                    print('Testing accuracy updated...')
                     self.plot_distribution(Z, title='Z')
                     self.plot_distribution(ZU, title='ZU')
                     self.plot_distribution(ZV, title='ZV')
@@ -229,7 +230,7 @@ class AE_adni(nn.Module):
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
         return {'train': ZU.detach(), 'test': ZU_test.detach()}, {'train': ZV.detach(), 'test': ZV_test.detach()}
 
-    def evaluate(self, test_data_loader, epoch):
+    def evaluate(self, test_data_loader):
         self.to(self.device)
         self.training = False
         self.eval()
