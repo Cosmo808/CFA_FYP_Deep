@@ -191,6 +191,12 @@ class RNN_classifier(nn.Module):
         self.eval()
 
         with torch.no_grad():
+            subject = demo['subject'][0]
+            zv = ZV[0].view(1, -1)
+            age = np.array([demo['age'][0]])
+            label = np.array([demo['label'][0]])
+            timepoint = np.array([demo['timepoint'][0]])
+
             acc = []  # 1 true, 0 false
             age_diff = []
             for i in range(1, len(demo['age'])):
