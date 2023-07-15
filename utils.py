@@ -235,5 +235,6 @@ class RNN_classifier(nn.Module):
                     label = np.array([demo['label'][i]])
                     timepoint = np.array([demo['timepoint'][i]])
 
+        self.training = False
         accuracy = round(sum(acc) / len(acc) * 100, 2)
         return accuracy
