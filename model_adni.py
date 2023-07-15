@@ -208,6 +208,8 @@ class AE_adni(nn.Module):
             # Z, ZU, ZV = Z[sort_index2], ZU[sort_index2], ZV[sort_index2]
             if epoch > 30:
                 if epoch % 5 == 0:
+                    test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader)
+                    print('Testing accuracy updated...')
                     self.plot_distribution(Z, title='Z')
                     self.plot_distribution(ZU, title='ZU')
                     self.plot_distribution(ZV, title='ZV')
@@ -216,7 +218,7 @@ class AE_adni(nn.Module):
                 print('Aligning finished...')
 
             epoch_loss = tloss / nb_batches
-            test_loss, ZU_test, ZV_test = self.evaluate(test_data_loader) if epoch >= 0 else 0.0, None, None
+
             if epoch_loss[-1] <= best_loss:
                 es = 0
                 best_loss = epoch_loss[-1]
@@ -225,9 +227,9 @@ class AE_adni(nn.Module):
 
             end_time = time()
             logger.info(f"Epoch loss (train/test): {epoch_loss}/{test_loss} take {end_time - start_time:.3} seconds\n")
-        return {'train': ZU.detach(), 'test': ZU_test}, {'train': ZV.detach(), 'test': ZV_test}
+        return {'train': ZU.detach(), 'test': ZU_test.detach()}, {'train': ZV.detach(), 'test': ZV_test.detach()}
 
-    def evaluate(self, test_data_loader):
+    def evaluate(self, test_data_loader, epoch):
         self.to(self.device)
         self.training = False
         self.eval()
@@ -276,7 +278,7 @@ class AE_adni(nn.Module):
                     cross_reconstruction_loss = 0.
                     recon_loss = self_reconstruction_loss
 
-                loss = recon_loss + self.beta * kl_loss
+                loss = recon_loss + self.kl * kl_loss
                 tloss[0] += float(self_reconstruction_loss)
                 tloss[1] += float(kl_loss)
                 tloss[2] += float(cross_reconstruction_loss)
@@ -285,7 +287,7 @@ class AE_adni(nn.Module):
 
         loss = tloss / nb_batches
         self.training = True
-        return loss, ZU.detach(), ZV.detach()
+        return loss, ZU, ZV
 
     @staticmethod
     def generate_sample(baseline_age, age):

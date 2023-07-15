@@ -186,7 +186,7 @@ class RNN_classifier(nn.Module):
             print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy, accuracy_test, take_time))
 
     def evaluate(self, ZV, demo):
-        self.to(self.device)
+        self.to(ZV.device)
         self.training = False
         self.eval()
 
