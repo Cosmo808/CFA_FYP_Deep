@@ -80,7 +80,7 @@ class AE_adni(nn.Module):
         self.U = torch.diag(torch.tensor([1 for i in range(dim_z // 2)] + [0 for i in range(dim_z - dim_z // 2)],
                                          device=self.device)).float()
         self.V = torch.eye(dim_z, device=self.device) - self.U
-        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.1, 0.25, 0.15
+        self.sigma0_2, self.sigma1_2, self.sigma2_2 = 0.1, 1., 0.15
         self.D = torch.eye(self.Y.size()[1], device=self.device).float()
 
     def reparametrize(self, mu, logVar):
@@ -354,7 +354,9 @@ class AE_adni(nn.Module):
             self.sigma0_2 = 1 / (N * dim_z) * torch.pow(torch.norm(Z - xbeta - yb, p='fro'), 2)
             # self.sigma1_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZU - xbeta, p='fro'), 2)
             self.sigma2_2 = 1 / (N * dim_z) * torch.pow(torch.norm(ZV - yb, p='fro'), 2)
+            self.sigma2_2 = min(self.sigma2_2, 0.1)
             self.sigma1_2 = (self.sigma0_2 + self.sigma2_2) * 5
+            self.sigma1_2 = max(10, min(15, self.sigma1_2))
 
             for i in range(5):
                 dbbd = torch.matmul(torch.inverse(self.D),

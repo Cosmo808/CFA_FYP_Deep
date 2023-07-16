@@ -242,5 +242,31 @@ class RNN_classifier(nn.Module):
                     timepoint = np.array([demo['timepoint'][i]])
 
         self.training = False
+        self.plot_pred(acc, age_diff)
         accuracy = round(sum(acc) / len(acc) * 100, 2)
         return accuracy
+
+    @staticmethod
+    def plot_pred(acc, age_diff):
+        acc, age_diff = np.array(acc), np.array(age_diff)
+        ind = np.argsort(age_diff)
+        acc, age_diff = acc[ind], age_diff[ind]
+
+        max_age = int(np.ceil(max(age_diff)))
+        age = []
+        accuracy = []
+        for interval in range(max_age):
+            for i in range(len(age_diff)):
+                if age_diff[i] >= interval:
+                    break
+            for j in range(len(age_diff)):
+                if age_diff[j] > interval + 1:
+                    break
+            age.append(np.mean(age_diff[i:j]))
+            accuracy.append(np.sum(acc[i:j]) / len(acc[i:j]) * 100)
+        plt.plot(age, accuracy)
+        plt.xlabel('years from baseline')
+        plt.ylabel('prediction accuracy (%)')
+        plt.ylim([60, 100])
+        plt.savefig('visualization/AD_prediction.png', bbox_inches='tight')
+        plt.close()
