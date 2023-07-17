@@ -200,7 +200,7 @@ class RNN_classifier(nn.Module):
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
                         for j in range(2, len(age)):
-                            if label[j] == 0 or label == 3:
+                            if label[j] == 0 or label[j] == 3:
                                 for k in range(2, j + 1):
                                     if label[k - 1] == -1:
                                         continue
