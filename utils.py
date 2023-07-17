@@ -212,24 +212,28 @@ class RNN_classifier(nn.Module):
                         for j in range(2, len(age)):
                             if label[j] == 0:
                                 for k in range(2, j + 1):
+                                    if label[k-1] == -1:
+                                        continue
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
                                     loss = pred[j]
 
-                                    age_diff.append(age[j] - age[k])
+                                    age_diff.append(age[j] - age[k-1])
                                     if loss < 0.5:
                                         acc.append(1)
                                     else:
                                         acc.append(0)
                             elif label[j] == 3:
                                 for k in range(2, j + 1):
+                                    if label[k-1] == -1:
+                                        continue
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
                                     loss = 1 - pred[j]
 
-                                    age_diff.append(age[j] - age[k])
+                                    age_diff.append(age[j] - age[k - 1])
                                     if loss > 0.5:
                                         acc.append(1)
                                     else:
@@ -242,31 +246,26 @@ class RNN_classifier(nn.Module):
                     timepoint = np.array([demo['timepoint'][i]])
 
         self.training = False
-        self.plot_pred(acc, age_diff)
+        self.plot_pred(acc, age_diff, 'stable')
         accuracy = round(sum(acc) / len(acc) * 100, 2)
         return accuracy
 
     @staticmethod
-    def plot_pred(acc, age_diff):
-        acc, age_diff = np.array(acc), np.array(age_diff)
+    def plot_pred(acc, age_diff, name):
+        acc, age_diff = np.array(acc), np.round(np.array(age_diff), 2)
         ind = np.argsort(age_diff)
         acc, age_diff = acc[ind], age_diff[ind]
 
-        max_age = int(np.ceil(max(age_diff)))
-        age = []
+        unique_age = np.unique(age_diff)
         accuracy = []
-        for interval in range(max_age):
-            for i in range(len(age_diff)):
-                if age_diff[i] >= interval:
-                    break
-            for j in range(len(age_diff)):
-                if age_diff[j] > interval + 1:
-                    break
-            age.append(np.mean(age_diff[i:j]))
-            accuracy.append(np.sum(acc[i:j]) / len(acc[i:j]) * 100)
-        plt.plot(age, accuracy)
+        for age in unique_age:
+            index = np.where(age_diff == age)
+            pred = acc[index]
+            accuracy.append(np.sum(pred) / len(pred) * 100)
+            print(age, accuracy[-1], len(pred))
+        plt.plot(unique_age, accuracy, '.')
         plt.xlabel('years from baseline')
         plt.ylabel('prediction accuracy (%)')
         plt.ylim([60, 100])
-        plt.savefig('visualization/AD_prediction.png', bbox_inches='tight')
+        plt.savefig('visualization/{}_AD_prediction.png'.format(name), bbox_inches='tight')
         plt.close()

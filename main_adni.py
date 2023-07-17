@@ -24,7 +24,7 @@ logger.addHandler(ch)
 parser = argparse.ArgumentParser()
 parser.add_argument('--cuda', type=int, default=0)
 parser.add_argument('--fold', type=int, default=0)
-parser.add_argument('--epochs', type=int, default=1000)
+parser.add_argument('--epochs', type=int, default=40)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--bs', type=int, default=128)
 parser.add_argument('--number', type=int, default=10242)
@@ -108,9 +108,9 @@ if __name__ == '__main__':
     adni_utils.global_pca_save(ZU, age_list, autoencoder.name)
 
     # rnn classification
-    rnn = RNN_classifier(12, 16)
+    rnn = RNN_classifier(12, ZU.size()[1])
     print('Start training classifier...')
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
     demo_all = {'train': demo_train, 'test': demo_test}
-    rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=200)
+    rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=30)
