@@ -143,33 +143,23 @@ class RNN_classifier(nn.Module):
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
                         for j in range(2, len(age)):
-                            if label[j] == 0:
+                            if label[j] == 0 or label == 3:
                                 for k in range(2, j + 1):
+                                    if label[k-1] == -1:
+                                        continue
                                     optimizer.zero_grad()
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
-                                    loss = pred[j]
-                                    loss.backward()
-                                    optimizer.step()
-
-                                    age_diff.append(age[j] - age[k])
-                                    if loss < 0.5:
-                                        acc.append(1)
+                                    if label[j] == 0:
+                                        loss = pred[j]
                                     else:
-                                        acc.append(0)
-                            elif label[j] == 3:
-                                for k in range(2, j + 1):
-                                    optimizer.zero_grad()
-                                    pred = self.forward(torch.cat(
-                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
-                                         ), 0))
-                                    loss = 1 - pred[j]
+                                        loss = 1 - pred[j]
                                     loss.backward()
                                     optimizer.step()
 
-                                    age_diff.append(age[j] - age[k])
-                                    if loss > 0.5:
+                                    age_diff.append(age[j] - age[k-1])
+                                    if loss < 0.5:
                                         acc.append(1)
                                     else:
                                         acc.append(0)
@@ -197,8 +187,8 @@ class RNN_classifier(nn.Module):
             label = np.array([demo['label'][0]])
             timepoint = np.array([demo['timepoint'][0]])
 
-            acc = []  # 1 true, 0 false
-            age_diff = []
+            acc, acc_conv = [], []  # 1 true, 0 false
+            age_diff, age_diff_conv = [], []
             for i in range(1, len(demo['age'])):
                 if demo['subject'][i] == subject:
                     zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
@@ -210,34 +200,30 @@ class RNN_classifier(nn.Module):
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
                         for j in range(2, len(age)):
-                            if label[j] == 0:
+                            if label[j] == 0 or label == 3:
                                 for k in range(2, j + 1):
-                                    if label[k-1] == -1:
+                                    if label[k - 1] == -1:
                                         continue
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
-                                    loss = pred[j]
-
-                                    age_diff.append(age[j] - age[k-1])
-                                    if loss < 0.5:
-                                        acc.append(1)
+                                    if label[j] == 0:
+                                        loss = pred[j]
                                     else:
-                                        acc.append(0)
-                            elif label[j] == 3:
-                                for k in range(2, j + 1):
-                                    if label[k-1] == -1:
-                                        continue
-                                    pred = self.forward(torch.cat(
-                                        (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
-                                         ), 0))
-                                    loss = 1 - pred[j]
+                                        loss = 1 - pred[j]
 
-                                    age_diff.append(age[j] - age[k - 1])
-                                    if loss > 0.5:
-                                        acc.append(1)
+                                    if label[k-1] == label[j]:
+                                        age_diff.append(age[j] - age[k - 1])
+                                        if loss < 0.5:
+                                            acc.append(1)
+                                        else:
+                                            acc.append(0)
                                     else:
-                                        acc.append(0)
+                                        age_diff_conv.append(age[j] - age[k - 1])
+                                        if loss < 0.5:
+                                            acc_conv.append(1)
+                                        else:
+                                            acc_conv.append(0)
 
                     subject = demo['subject'][i]
                     zv = ZV[i].view(1, -1)
@@ -247,11 +233,15 @@ class RNN_classifier(nn.Module):
 
         self.training = False
         self.plot_pred(acc, age_diff, 'stable')
-        accuracy = round(sum(acc) / len(acc) * 100, 2)
+        self.plot_pred(acc_conv, age_diff_conv, 'conversion')
+        print('stable acc: {}%, conversion acc: {}%'
+              .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
+        accuracy = round((sum(acc) + sum(acc_conv)) / (len(acc) + len(acc_conv)) * 100, 2)
         return accuracy
 
     @staticmethod
     def plot_pred(acc, age_diff, name):
+        print(name)
         acc, age_diff = np.array(acc), np.round(np.array(age_diff), 2)
         ind = np.argsort(age_diff)
         acc, age_diff = acc[ind], age_diff[ind]
