@@ -182,8 +182,8 @@ class RNN_classifier(nn.Module):
             print('stable acc: {}%, conversion acc: {}%'
                   .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
             accuracy = round((sum(acc) + sum(acc_conv)) / (len(acc) + len(acc_conv)) * 100, 2)
-            # accuracy_test = self.evaluate(ZV_test, demo_all['test'])
-            accuracy_test = 0
+            accuracy_test = self.evaluate(ZV_test, demo_all['test'])
+
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy, accuracy_test, take_time))
 
