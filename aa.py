@@ -25,34 +25,39 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 if __name__ == '__main__':
-    age = np.linspace(60, 90, 100)
+    age = np.array([0.25, 0.5, 0.75, 1.0, 1.5, 1.75, 2.0, 2.5, 2.75, 3.0, 3.5, 3.75,
+                    4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5])
+    stable_num = np.array([52, 339, 68, 553, 235, 42, 259, 102, 4, 155, 52, 5,
+                           114, 49, 76, 38, 39, 24, 13, 7, 4, 4])
+    conversion_num = np.array([10, 104, 23, 182, 153, 37, 103, 104, 3, 56, 56, 7,
+                               58, 56, 45, 38, 30, 29, 16, 16, 2, 2])
+    stable_acc = np.array([96.1, 92, 80.1, 93.3, 91.4, 76.2, 93.8, 95.1, 75, 93.5,
+                           90.4, 100, 92.3, 93.9, 96, 94.7, 94.9, 91.6, 100, 100, 100])
+    conversion_acc = np.array([80, 88.5, 91.3, 90.1, 88.2, 81.1, 89.3, 88.5, 66.7, 87.5,
+                               91.1, 85.7, 91.4, 92.9, 93.3, 94.7, 96.7, 86.2, 81.3, 81.3, 100, 100])
 
-    x = np.linspace(0, 1, 100)
+    fig, axes = plt.subplots(2, 2)
+    # plt.subplots_adjust(wspace=0.5, hspace=0.5)
 
-    ours = -1.0 * x ** 2 + 0.5 + 3 * np.random.normal(0, 0.01, 100)
-    beta_VAE = np.random.normal(0, 0.01, 100) * 15 - 0.5 * x - 0.1
-    ML_VAE = np.random.normal(0, 0.01, 100) * 10 - 0.7 * x + 0.1
-    rank_VAE = -0.5 * x ** 2 + 0.0 + 1.5 * np.random.normal(0, 0.01, 100) + 0.4
+    axe = axes[0][0]
+    axe.plot(age, stable_num, '.-')
+    axe.set_xlim([0, 9])
+    axe.set_xlabel('years from the last known age')
+    axe.set_ylabel('the number of prediction tasks')
+    axe.set_title('stable CN and AD')
 
-    LNE = -0.8 * x ** 2 - 0.1 + 2.2 * np.random.normal(0, 0.01, 100) + 0.4
-    LNE[10:20] += 0.04
-    LNE[50:60] += 0.08
-    LNE[30:80] -= 0.03
-    LNE[70:80] += 0.08
-    LNE[70:100] -= 0.03
+    axe = axes[1][0]
+    axe.plot(age, stable_num, '.-')
+    axe.set_xlim([0, 9])
+    axe.set_xlabel('years from the last known age')
+    axe.set_ylabel('the number of prediction tasks')
+    axe.set_title('stable CN and AD')
 
-    plt.plot(age, beta_VAE, alpha=0.6)
-    plt.plot(age, ML_VAE, alpha=0.6)
-    plt.plot(age, rank_VAE, linewidth=1.5, alpha=0.8)
-    plt.plot(age, LNE, linewidth=1.5, alpha=0.8)
-    plt.plot(age, ours, linewidth=3, color='blue')
+    axe = axes[1][1]
+    axe.plot(age, conversion_num, '.-')
+    axe.set_xlim([0, 9])
+    axe.set_xlabel('years from the last known age')
+    axe.set_ylabel('the number of prediction tasks')
+    axe.set_title('conversion')
 
-    print(np.abs(stats.spearmanr(ours, age)), np.abs(stats.spearmanr(beta_VAE, age)),
-          np.abs(stats.spearmanr(ML_VAE, age)), np.abs(stats.spearmanr(rank_VAE, age)),
-          np.abs(stats.spearmanr(LNE, age)))
-    plt.yticks([])
-    plt.xlabel('Clinical age / year')
-    plt.ylabel('1st PCA componnet of ZU')
-
-    plt.legend(['beta-VAE', 'ML-VAE', 'Rank-VAE', 'LNE', 'Ours'])
     plt.show()

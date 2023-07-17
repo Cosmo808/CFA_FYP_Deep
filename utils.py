@@ -132,6 +132,7 @@ class RNN_classifier(nn.Module):
 
             acc, acc_conv = [], []  # 1 true, 0 false
             age_diff, age_diff_conv = [], []
+            labels, labels_conv = [], []   # 1 ad, 0 cn
             for i in range(1, len(demo['age'])):
                 if demo['subject'][i] == subject:
                     zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
@@ -160,12 +161,14 @@ class RNN_classifier(nn.Module):
 
                                     if label[k - 1] == label[j]:
                                         age_diff.append(age[j] - age[k - 1])
+                                        labels.append(label[j] / 3)
                                         if loss < 0.5:
                                             acc.append(1)
                                         else:
                                             acc.append(0)
                                     else:
                                         age_diff_conv.append(age[j] - age[k - 1])
+                                        labels_conv.append(label[j] / 3)
                                         if loss < 0.5:
                                             acc_conv.append(1)
                                         else:
@@ -177,8 +180,8 @@ class RNN_classifier(nn.Module):
                     label = np.array([demo['label'][i]])
                     timepoint = np.array([demo['timepoint'][i]])
 
-            self.plot_pred(acc, age_diff, 'stable')
-            self.plot_pred(acc_conv, age_diff_conv, 'conversion')
+            self.plot_pred(acc, age_diff, labels, 'stable')
+            self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
             print('stable acc: {}%, conversion acc: {}%'
                   .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
             accuracy = round((sum(acc) + sum(acc_conv)) / (len(acc) + len(acc_conv)) * 100, 2)
@@ -201,6 +204,7 @@ class RNN_classifier(nn.Module):
 
             acc, acc_conv = [], []  # 1 true, 0 false
             age_diff, age_diff_conv = [], []
+            labels, labels_conv = [], []  # 1 ad, 0 cn
             for i in range(1, len(demo['age'])):
                 if demo['subject'][i] == subject:
                     zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
@@ -224,14 +228,16 @@ class RNN_classifier(nn.Module):
                                     else:
                                         loss = 1 - pred[j]
 
-                                    if label[k-1] == label[j]:
+                                    if label[k - 1] == label[j]:
                                         age_diff.append(age[j] - age[k - 1])
+                                        labels.append(label[j] / 3)
                                         if loss < 0.5:
                                             acc.append(1)
                                         else:
                                             acc.append(0)
                                     else:
                                         age_diff_conv.append(age[j] - age[k - 1])
+                                        labels_conv.append(label[j] / 3)
                                         if loss < 0.5:
                                             acc_conv.append(1)
                                         else:
@@ -244,27 +250,28 @@ class RNN_classifier(nn.Module):
                     timepoint = np.array([demo['timepoint'][i]])
 
         self.training = False
-        self.plot_pred(acc, age_diff, 'stable')
-        self.plot_pred(acc_conv, age_diff_conv, 'conversion')
+        self.plot_pred(acc, age_diff, labels, 'stable')
+        self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
         print('stable acc: {}%, conversion acc: {}%'
               .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
         accuracy = round((sum(acc) + sum(acc_conv)) / (len(acc) + len(acc_conv)) * 100, 2)
         return accuracy
 
     @staticmethod
-    def plot_pred(acc, age_diff, name):
+    def plot_pred(acc, age_diff, labels, name):
         print(name)
-        acc, age_diff = np.array(acc), np.round(np.array(age_diff), 2)
+        acc, age_diff, labels = np.array(acc), np.round(np.array(age_diff), 2), np.array(labels)
         ind = np.argsort(age_diff)
-        acc, age_diff = acc[ind], age_diff[ind]
-
+        acc, age_diff, labels = acc[ind], age_diff[ind], labels[ind]
+        print(labels[:40])
         unique_age = np.unique(age_diff)
         accuracy = []
         for age in unique_age:
             index = np.where(age_diff == age)
             pred = acc[index]
             accuracy.append(np.sum(pred) / len(pred) * 100)
-            print(age, accuracy[-1], len(pred))
+            label = labels[index]
+            print(age, accuracy[-1], len(pred), sum(label), len(label) - sum(label))
         plt.plot(unique_age, accuracy, '.')
         plt.xlabel('years from baseline')
         plt.ylabel('prediction accuracy (%)')
