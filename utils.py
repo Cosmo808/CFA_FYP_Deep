@@ -130,8 +130,8 @@ class RNN_classifier(nn.Module):
             label = np.array([demo['label'][0]])
             timepoint = np.array([demo['timepoint'][0]])
 
-            acc = []  # 1 true, 0 false
-            age_diff = []
+            acc, acc_conv = [], []  # 1 true, 0 false
+            age_diff, age_diff_conv = [], []
             for i in range(1, len(demo['age'])):
                 if demo['subject'][i] == subject:
                     zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
@@ -158,11 +158,18 @@ class RNN_classifier(nn.Module):
                                     loss.backward()
                                     optimizer.step()
 
-                                    age_diff.append(age[j] - age[k-1])
-                                    if loss < 0.5:
-                                        acc.append(1)
+                                    if label[k - 1] == label[j]:
+                                        age_diff.append(age[j] - age[k - 1])
+                                        if loss < 0.5:
+                                            acc.append(1)
+                                        else:
+                                            acc.append(0)
                                     else:
-                                        acc.append(0)
+                                        age_diff_conv.append(age[j] - age[k - 1])
+                                        if loss < 0.5:
+                                            acc_conv.append(1)
+                                        else:
+                                            acc_conv.append(0)
 
                     subject = demo['subject'][i]
                     zv = ZV[i].view(1, -1)
