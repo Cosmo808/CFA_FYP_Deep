@@ -111,7 +111,8 @@ if __name__ == '__main__':
     label = demo_train['label']
     label[label == 2] = 1
     legend = ['CN', 'MCI', 'AD']
-    adni_utils.t_SNE(ZU['train'], label, legend)
+    adni_utils.t_SNE(ZU['train'], label, legend, 'ZU')
+    adni_utils.t_SNE(ZV['train'], label, legend, 'ZV')
 
     # rnn classification
     rnn = RNN_classifier(12, ZV['train'].size()[1])
