@@ -70,7 +70,7 @@ class adni_utils:
                 yield data
 
     @staticmethod
-    def t_SNE(Z, label, legend):
+    def t_SNE(Z, label, legend, name):
         vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(Z.cpu().detach().numpy())
         vis_x = vis_data[:, 0]
         vis_y = vis_data[:, 1]
@@ -85,7 +85,7 @@ class adni_utils:
         plt.title('t-SNE analysis')
         plt.legend(handles=scatter.legend_elements()[0], labels=legend)
 
-        plt.savefig('visualization/t-SNE analysis.png', bbox_inches='tight')
+        plt.savefig('visualization/{}_t-SNE_analysis.png'.format(name), bbox_inches='tight')
         plt.close()
 
 
@@ -283,7 +283,6 @@ class RNN_classifier(nn.Module):
         acc, age_diff, labels = np.array(acc), np.round(np.array(age_diff), 2), np.array(labels)
         ind = np.argsort(age_diff)
         acc, age_diff, labels = acc[ind], age_diff[ind], labels[ind]
-        print(labels[:40])
         unique_age = np.unique(age_diff)
         accuracy = []
         for age in unique_age:

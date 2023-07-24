@@ -8,7 +8,7 @@ import os
 from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess_starmen
 import argparse
-import model_starmen
+import model as model
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = model_starmen.Riem_VAE()
+    autoencoder = model.Riem_VAE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
