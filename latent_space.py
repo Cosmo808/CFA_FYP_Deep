@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     Dataset = Dataset_starmen
     all_data = Dataset(dataset['path'], dataset['subject'], dataset['baseline_age'], dataset['age'],
-                       dataset['timepoint'], dataset['first_age'])
+                       dataset['timepoint'], dataset['first_age'], dataset['alpha'])
 
     data_loader = torch.utils.data.DataLoader(all_data, batch_size=512, shuffle=False,
                                               num_workers=0, drop_last=False, pin_memory=True)
@@ -88,17 +88,17 @@ if __name__ == '__main__':
     plt.savefig('visualization/latent_space/individual_trajectory.png', bbox_inches='tight')
 
     # global trajectory
-    # zu = ZU[index]
-    # global_tra = autoencoder.decoder(zu)
-    #
-    # fig, axes = plt.subplots(1, len(index), figsize=(2 * len(index), 2))
-    # plt.subplots_adjust(wspace=0, hspace=0)
-    # for i in range(len(index)):
-    #     axes[i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
-    # for ax in axes:
-    #     ax.set_xticks([])
-    #     ax.set_yticks([])
-    # plt.savefig('visualization/latent_space/global_trajectory.png', bbox_inches='tight')
+    zu = ZU[index]
+    global_tra = autoencoder.decoder(zu)
+
+    fig, axes = plt.subplots(1, len(index), figsize=(2 * len(index), 2))
+    plt.subplots_adjust(wspace=0, hspace=0)
+    for i in range(len(index)):
+        axes[i].matshow(255 * global_tra[i][0].cpu().detach().numpy())
+    for ax in axes:
+        ax.set_xticks([])
+        ax.set_yticks([])
+    plt.savefig('visualization/latent_space/global_trajectory.png', bbox_inches='tight')
 
     # individual heterogeneity
     index = [np.nonzero(np.abs(np.array(psi) - -3.7439508) < 0.1)[0]]

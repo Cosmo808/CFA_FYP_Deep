@@ -179,6 +179,7 @@ if __name__ == '__main__':
         # load the model
         model_name = 'starmen'
         autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
+        # autoencoder = torch.load('model/{}_fold_{}'.format(fold, model_name), map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
         autoencoder.eval()

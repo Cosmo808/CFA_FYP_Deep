@@ -101,14 +101,20 @@ if __name__ == '__main__':
 
     adni_utils = adni_utils()
     # spearman corr
-    age_list, index = adni_utils.generate_age_index(demo_train['age'])
-    thick = thick_train['left']
-    thick = torch.tensor(thick[index], device=device).float()
-    _, _, ZU, _, _, _ = autoencoder.forward(thick)
-    adni_utils.global_pca_save(ZU, age_list, autoencoder.name)
+    # age_list, index = adni_utils.generate_age_index(demo_train['age'])
+    # thick = thick_train['left']
+    # thick = torch.tensor(thick[index], device=device).float()
+    # _, _, ZU, _, _, _ = autoencoder.forward(thick)
+    # adni_utils.global_pca_save(ZU, age_list, autoencoder.name)
+
+    # t-SNE analysis
+    label = demo_train['label']
+    label[label == 2] = 1
+    legend = ['CN', 'MCI', 'AD']
+    adni_utils.t_SNE(ZU['train'], label, legend)
 
     # rnn classification
-    rnn = RNN_classifier(12, ZU.size()[1])
+    rnn = RNN_classifier(12, ZV['train'].size()[1])
     print('Start training classifier...')
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)

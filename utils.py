@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from time import time
 import scipy.stats as stats
+from sklearn.manifold import TSNE
 import logging
 import sys
 import os
@@ -67,6 +68,25 @@ class adni_utils:
         for loader in loaders:
             for data in loader:
                 yield data
+
+    @staticmethod
+    def t_SNE(Z, label, legend):
+        vis_data = TSNE(n_components=2, perplexity=30.0, n_iter=1000).fit_transform(Z.cpu().detach().numpy())
+        vis_x = vis_data[:, 0]
+        vis_y = vis_data[:, 1]
+
+        fig, ax = plt.subplots(1)
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+
+        scatter = plt.scatter(vis_x, vis_y, marker='.', c=label, cmap=plt.cm.get_cmap("rainbow"))
+        plt.axis('off')
+        plt.colorbar()
+        plt.title('t-SNE analysis')
+        plt.legend(handles=scatter.legend_elements()[0], labels=legend)
+
+        plt.savefig('visualization/t-SNE analysis.png', bbox_inches='tight')
+        plt.close()
 
 
 class RNN_classifier(nn.Module):
