@@ -205,7 +205,8 @@ class RNN_classifier(nn.Module):
             print('stable acc: {}%, conversion acc: {}%'
                   .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
             accuracy = round((sum(acc) + sum(acc_conv)) / (len(acc) + len(acc_conv)) * 100, 2)
-            accuracy_test = self.evaluate(ZV_test, demo_all['test'])
+            # accuracy_test = self.evaluate(ZV_test, demo_all['test'])
+            accuracy_test = 0.0
 
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy, accuracy_test, take_time))
@@ -295,6 +296,11 @@ class RNN_classifier(nn.Module):
         age_diff[age_diff == 6.5] = 7.0
         age_diff[age_diff == 7.5] = 8.0
         age_diff[age_diff == 8.5] = 8.0
+
+        idx = np.where(age_diff == 2.5)[0]
+        idx0, idx1 = idx[:len(idx) // 2], idx[len(idx) // 2:]
+        age_diff[idx0] = 2.0
+        age_diff[idx1] = 3.0
 
         unique_age = np.unique(age_diff)
         accuracy, num, ad_num, cn_num = [], [], [], []
