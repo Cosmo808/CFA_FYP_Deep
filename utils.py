@@ -288,7 +288,8 @@ class RNN_classifier(nn.Module):
         age_diff[age_diff == 0.75] = 1.0
         age_diff[age_diff == 1.75] = 1.5
         age_diff[age_diff == 2.75] = 2.5
-        age_diff[age_diff == 3.75] = 3.5
+        age_diff[age_diff == 3.5] = 3.0
+        age_diff[age_diff == 3.75] = 4.0
         age_diff[age_diff == 4.5] = 5.0
         age_diff[age_diff == 5.5] = 6.0
         age_diff[age_diff == 6.5] = 7.0
