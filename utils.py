@@ -283,17 +283,29 @@ class RNN_classifier(nn.Module):
         acc, age_diff, labels = np.array(acc), np.round(np.array(age_diff), 2), np.array(labels)
         ind = np.argsort(age_diff)
         acc, age_diff, labels = acc[ind], age_diff[ind], labels[ind]
+
+        age_diff[age_diff == 0.25] = 0.5
+        age_diff[age_diff == 0.75] = 1.0
+        age_diff[age_diff == 1.75] = 1.5
+        age_diff[age_diff == 2.75] = 2.5
+        age_diff[age_diff == 3.75] = 3.5
+        age_diff[age_diff == 4.5] = 5.0
+        age_diff[age_diff == 5.5] = 6.0
+        age_diff[age_diff == 6.5] = 7.0
+        age_diff[age_diff == 7.5] = 8.0
+        age_diff[age_diff == 8.5] = 8.0
+
         unique_age = np.unique(age_diff)
-        accuracy = []
+        accuracy, num, ad_num, cn_num = [], [], [], []
         for age in unique_age:
             index = np.where(age_diff == age)
             pred = acc[index]
             accuracy.append(np.sum(pred) / len(pred) * 100)
             label = labels[index]
-            print(age, accuracy[-1], len(pred), sum(label), len(label) - sum(label))
-        plt.plot(unique_age, accuracy, '.')
-        plt.xlabel('years from baseline')
-        plt.ylabel('prediction accuracy (%)')
-        plt.ylim([60, 100])
-        plt.savefig('visualization/{}_AD_prediction.png'.format(name), bbox_inches='tight')
-        plt.close()
+            num.append(len(pred))
+            ad_num.append(sum(label))
+            cn_num.append(len(label) - sum(label))
+        print('acc: ', accuracy)
+        print('total num: ', num)
+        print('ad num: ', ad_num)
+        print('cn num: ', cn_num)
