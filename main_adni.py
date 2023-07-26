@@ -9,7 +9,7 @@ from dataset import Dataset_adni
 from data_preprocess import Data_preprocess_ADNI
 import argparse
 import model_adni
-from utils import adni_utils, RNN_classifier
+from utils import adni_utils, RNN_classifier, FC_classifier
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -115,10 +115,13 @@ if __name__ == '__main__':
     adni_utils.t_SNE(ZV['train'], label, legend, 'ZV')
     print('t-SNE finished...')
 
+    # longitudinal alignment
+
     # rnn classification
-    rnn = RNN_classifier(12, ZV['train'].size()[1])
+    rnn = FC_classifier(ZV['train'].size()[1])
     print('Start training classifier...')
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
-    demo_all = {'train': demo_train, 'test': demo_test}
+    params = {'beta': autoencoder.beta, 'sigma0_2': autoencoder.sigma0_2, 'sigma1_2': autoencoder.sigma1_2, 'sigma2_2': autoencoder.sigma2_2}
+    demo_all = {'train': demo_train, 'test': demo_test, 'X': X, 'Y': Y, 'params': params}
     rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=40)
