@@ -434,7 +434,7 @@ class FC_classifier(nn.Module):
 
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy,
-                                                                                     accuracy_test, take_time))
+                                                                                     accuracy_test, take_time), '\n')
     @staticmethod
     def plot_pred(acc, age_diff, labels, name):
         print(name)
