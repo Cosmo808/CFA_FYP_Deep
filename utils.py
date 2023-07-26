@@ -178,6 +178,9 @@ class RNN_classifier(nn.Module):
                                     else:
                                         loss = 1 - pred[j]
 
+                                    loss.backward()
+                                    optimizer.step()
+
                                     if label[k - 1] == label[j]:
                                         age_diff.append(age[j] - age[k - 1])
                                         labels.append(label[j] / 3)
