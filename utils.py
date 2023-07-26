@@ -347,7 +347,8 @@ class FC_classifier(nn.Module):
         xbeta = torch.matmul(X, beta)
         yt_z_xbeta = torch.matmul(yt, zv - xbeta)
         b = torch.matmul(
-            torch.inverse((sigma0_2 + sigma2_2) * yty - 2 * sigma0_2 * sigma2_2 * torch.eye(yty.size()[0], device=zv.device)),
+            torch.inverse(
+                (sigma0_2 + sigma2_2) * yty - 2 * sigma0_2 * sigma2_2 * torch.eye(yty.size()[0], device=zv.device)),
             sigma2_2 * yt_z_xbeta + sigma0_2 * yt_zv
         )
         # predict zv
@@ -435,6 +436,7 @@ class FC_classifier(nn.Module):
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} accuracy (train/test) {}%/{}% take {} seconds'.format(epoch + 1, num_epochs, accuracy,
                                                                                      accuracy_test, take_time), '\n')
+
     @staticmethod
     def plot_pred(acc, age_diff, labels, name):
         print(name)
