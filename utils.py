@@ -163,12 +163,13 @@ class RNN_classifier(nn.Module):
                     if len(age) >= 4:
                         zv, age, label, timepoint = self.expand_zv(zv, torch.tensor(age), torch.tensor(label),
                                                                    torch.tensor(timepoint))
+                        first_conv = True
+                        len_conv = len(acc_conv)
                         for j in range(2, len(age)):
                             if label[j] == 0 or label[j] == 3:
                                 for k in range(2, j + 1):
-                                    if label[k-1] == -1:
+                                    if label[k - 1] == -1:
                                         continue
-                                    optimizer.zero_grad()
                                     pred = self.forward(torch.cat(
                                         (zv[:k], torch.zeros([self.layers_num - k, self.input_dim], device=zv.device)
                                          ), 0))
@@ -176,8 +177,6 @@ class RNN_classifier(nn.Module):
                                         loss = pred[j]
                                     else:
                                         loss = 1 - pred[j]
-                                    loss.backward()
-                                    optimizer.step()
 
                                     if label[k - 1] == label[j]:
                                         age_diff.append(age[j] - age[k - 1])
@@ -187,12 +186,15 @@ class RNN_classifier(nn.Module):
                                         else:
                                             acc.append(0)
                                     else:
-                                        age_diff_conv.append(age[j] - age[k - 1])
-                                        labels_conv.append(label[j] / 3)
-                                        if loss < 0.5:
-                                            acc_conv.append(1)
-                                        else:
-                                            acc_conv.append(0)
+                                        if first_conv:
+                                            age_diff_conv.append(age[j] - age[k - 1])
+                                            labels_conv.append(label[j] / 3)
+                                            if loss < 0.5:
+                                                acc_conv.append(1)
+                                            else:
+                                                acc_conv.append(0)
+                            if len(acc_conv) != len_conv:
+                                first_conv = False
 
                     subject = demo['subject'][i]
                     zv = ZV[i].view(1, -1)
