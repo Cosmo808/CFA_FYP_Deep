@@ -336,8 +336,9 @@ class FC_classifier(nn.Module):
         self.input_dim = input_dim
         self.fc = nn.Linear(input_dim, 1)
 
-    def forward(self, zv, X, Y, predicted_age, params):
-        baseline_age = X[0, 3]
+    def forward(self, zv, X, predicted_age, params):
+        Y = X[:, :2].clone()
+        baseline_age = X[0, -1]
         beta, sigma0_2, sigma1_2, sigma2_2 = params['beta'], params['sigma0_2'], params['sigma1_2'], params['sigma2_2']
         # get b
         yt = torch.transpose(Y, 0, 1)
@@ -389,7 +390,7 @@ class FC_classifier(nn.Module):
                                 for k in range(2, j + 1):
                                     if label[k - 1] == -1:
                                         continue
-                                    pred = self.forward(zv[:k], x[:k], y[:k], age[j], demo_all['params'])
+                                    pred = self.forward(zv[:k], x[:k], age[j], demo_all['params'])
                                     if label[j] == 0:
                                         loss = pred
                                     else:
