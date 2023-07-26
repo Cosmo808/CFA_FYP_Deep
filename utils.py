@@ -470,3 +470,5 @@ class FC_classifier(nn.Module):
             cn_num.append(len(label) - sum(label))
         print('acc: ', accuracy)
         print('total num: ', num)
+        print('ad num: ', ad_num)
+        print('cn num: ', cn_num)
