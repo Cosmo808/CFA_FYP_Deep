@@ -121,4 +121,4 @@ if __name__ == '__main__':
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
     demo_all = {'train': demo_train, 'test': demo_test}
-    rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=30)
+    rnn.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer_rnn, num_epochs=40)

@@ -263,6 +263,8 @@ class RNN_classifier(nn.Module):
                                             acc_conv.append(1)
                                         else:
                                             acc_conv.append(0)
+                            if label[j] == 3:
+                                break
 
                     subject = demo['subject'][i]
                     zv = ZV[i].view(1, -1)
@@ -314,5 +316,3 @@ class RNN_classifier(nn.Module):
             cn_num.append(len(label) - sum(label))
         print('acc: ', accuracy)
         print('total num: ', num)
-        print('ad num: ', ad_num)
-        print('cn num: ', cn_num)
