@@ -468,6 +468,7 @@ class FC_classifier(nn.Module):
             num.append(len(pred))
             ad_num.append(sum(label))
             cn_num.append(len(label) - sum(label))
+        print('age: ', unique_age)
         print('acc: ', accuracy)
         print('total num: ', num)
         print('ad num: ', ad_num)
