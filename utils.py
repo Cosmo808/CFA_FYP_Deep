@@ -207,8 +207,8 @@ class RNN_classifier(nn.Module):
 
             self.plot_pred(acc, age_diff, labels, 'stable')
             self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
-            # print('Training stable acc: {}%, conversion acc: {}%'
-            #       .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
+            print('stable acc: {}%, conversion acc: {}%'
+                  .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
 
             # self.evaluate(ZV_test, demo_all['test'])
 
@@ -430,8 +430,8 @@ class FC_classifier(nn.Module):
 
             self.plot_pred(acc, age_diff, labels, 'stable')
             self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
-            # print('Training stable acc: {}%, conversion acc: {}%'
-            #       .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
+            print('stable acc: {}%, conversion acc: {}%'
+                  .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
 
             # self.evaluate(ZV_test, demo_all['test'])
 
