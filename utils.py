@@ -205,12 +205,12 @@ class RNN_classifier(nn.Module):
                     label = np.array([demo['label'][i]])
                     timepoint = np.array([demo['timepoint'][i]])
 
-            # self.plot_pred(acc, age_diff, labels, 'stable')
-            # self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
+            self.plot_pred(acc, age_diff, labels, 'stable')
+            self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
             # print('Training stable acc: {}%, conversion acc: {}%'
             #       .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
 
-            self.evaluate(ZV_test, demo_all['test'])
+            # self.evaluate(ZV_test, demo_all['test'])
 
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} take {} seconds'.format(epoch + 1, num_epochs, take_time), '\n')
@@ -326,11 +326,8 @@ class RNN_classifier(nn.Module):
             num.append(len(pred))
             ad_num.append(sum(label))
             cn_num.append(len(label) - sum(label))
-        print('age: ', unique_age)
-        print('acc: ', accuracy)
-        print('total num: ', num)
-        print('ad num: ', ad_num)
-        print('cn num: ', cn_num, '\n')
+
+        print('acc: ', accuracy, '\n')
 
 
 class FC_classifier(nn.Module):
@@ -431,89 +428,15 @@ class FC_classifier(nn.Module):
                     timepoint = np.array([demo['timepoint'][i]])
                     x, y = X[i].view(1, -1), Y[i].view(1, -1)
 
-            # self.plot_pred(acc, age_diff, labels, 'stable')
-            # self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
+            self.plot_pred(acc, age_diff, labels, 'stable')
+            self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
             # print('Training stable acc: {}%, conversion acc: {}%'
             #       .format(round(sum(acc) / len(acc) * 100, 2), round(sum(acc_conv) / len(acc_conv) * 100, 2)))
 
-            self.evaluate(ZV_test, demo_all['test'])
+            # self.evaluate(ZV_test, demo_all['test'])
 
             take_time = round(time() - start_time, 2)
             print('Epoch {}/{} take {} seconds'.format(epoch + 1, num_epochs, take_time), '\n')
-
-    def evaluate(self, ZV, demo):
-        self.to(ZV.device)
-        self.training = False
-        self.eval()
-
-        with torch.no_grad():
-            subject = demo['subject'][0]
-            zv = ZV[0].view(1, -1)
-            age = np.array([demo['age'][0]])
-            label = np.array([demo['label'][0]])
-            timepoint = np.array([demo['timepoint'][0]])
-            x, y = X[0].view(1, -1), Y[0].view(1, -1)
-
-            acc, acc_conv = [], []  # 1 true, 0 false
-            age_diff, age_diff_conv = [], []
-            labels, labels_conv = [], []  # 1 ad, 0 cn
-            for i in range(1, len(demo['age'])):
-                if demo['subject'][i] == subject:
-                    zv = torch.cat((zv, ZV[i].view(1, -1)), 0)
-                    age = np.append(age, demo['age'][i])
-                    label = np.append(label, demo['label'][i])
-                    timepoint = np.append(timepoint, demo['timepoint'][i])
-                    x = torch.cat((x, X[i].view(1, -1)), dim=0)
-                    y = torch.cat((y, Y[i].view(1, -1)), dim=0)
-                else:
-                    if len(age) >= 4:
-                        first_conv = True
-                        len_conv = len(acc_conv)
-                        for j in range(2, len(age)):
-                            if label[j] == 0 or label[j] == 3:
-                                for k in range(2, j + 1):
-                                    if label[k - 1] == -1:
-                                        continue
-                                    pred = self.forward(zv[:k], x[:k], age[j], demo_all['params'])
-                                    if label[j] == 0:
-                                        loss = pred
-                                    else:
-                                        loss = 1 - pred
-
-                                    if label[k - 1] == label[j]:
-                                        age_diff.append(age[j] - age[k - 1])
-                                        labels.append(label[j] / 3)
-                                        if loss < 0.5:
-                                            acc.append(1)
-                                        else:
-                                            acc.append(0)
-                                    else:
-                                        if first_conv:
-                                            age_diff_conv.append(age[j] - age[k - 1])
-                                            labels_conv.append(label[j] / 3)
-                                            if loss < 0.5:
-                                                acc_conv.append(1)
-                                            else:
-                                                acc_conv.append(0)
-                            if len(acc_conv) != len_conv:
-                                first_conv = False
-
-                    subject = demo['subject'][i]
-                    zv = ZV[i].view(1, -1)
-                    age = np.array([demo['age'][i]])
-                    label = np.array([demo['label'][i]])
-                    timepoint = np.array([demo['timepoint'][i]])
-                    x, y = X[i].view(1, -1), Y[i].view(1, -1)
-
-        self.training = False
-        self.plot_pred(acc, age_diff, labels, 'stable')
-        self.plot_pred(acc_conv, age_diff_conv, labels_conv, 'conversion')
-        stable_acc = round(sum(acc) / len(acc) * 100, 2)
-        try:
-            conv_acc = round(sum(acc_conv) / len(acc_conv) * 100, 2)
-        except ZeroDivisionError:
-            conv_acc = 0.
-        print('stable acc: {}%, conversion acc: {}%'.format(stable_acc, conv_acc))
 
     @staticmethod
     def plot_pred(acc, age_diff, labels, name):
@@ -552,8 +475,5 @@ class FC_classifier(nn.Module):
             num.append(len(pred))
             ad_num.append(sum(label))
             cn_num.append(len(label) - sum(label))
-        print('age: ', unique_age)
-        print('acc: ', accuracy)
-        print('total num: ', num)
-        print('ad num: ', ad_num)
-        print('cn num: ', cn_num, '\n')
+
+        print('acc: ', accuracy, '\n')
