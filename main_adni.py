@@ -118,7 +118,7 @@ if __name__ == '__main__':
     # longitudinal alignment
 
     # rnn classification
-    rnn = FC_classifier(ZV['train'].size()[1])
+    rnn = RNN_classifier(input_dim=ZV['train'].size()[1])
     print('Start training classifier...')
     optimizer_fn = optim.Adam
     optimizer_rnn = optimizer_fn(rnn.parameters(), lr=lr)
