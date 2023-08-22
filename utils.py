@@ -5,6 +5,7 @@ import numpy as np
 from time import time
 import scipy.stats as stats
 from sklearn.manifold import TSNE
+from tqdm import tqdm
 import logging
 import sys
 import os
@@ -477,3 +478,44 @@ class FC_classifier(nn.Module):
             cn_num.append(len(label) - sum(label))
 
         print('acc: ', accuracy, '\n')
+
+
+class CNAD_classifier(nn.Module):
+    def __init__(self, input_dim):
+        super(CNAD_classifier, self).__init__()
+        nn.Module.__init__(self)
+        self.name = 'CNAD_classifier'
+
+        self.input_dim = input_dim
+        self.fc1 = nn.Linear(input_dim, input_dim)
+        self.fc1 = nn.Linear(input_dim, 2)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = self.softmax(self.fc2(x))
+        return x
+
+    def train_(self, ZV, ZV_test, demo_all, optimizer, num_epochs):
+        self.to(ZV.device)
+        demo = demo_all['train']
+        criterion = nn.CrossEntropyLoss()
+
+        for epoch in tqdm(range(num_epochs)):
+            optimizer.zero_grad()
+            preds = self.forward(ZV)
+            loss = criterion(preds, demo['label'])
+            loss.backward()
+            optimizer.step()
+
+            if epoch % 5 == 0:
+                predicted_labels = torch.argmax(preds, dim=1)
+                train_acc = torch.sum(predicted_labels == demo['label']).item() / predicted_labels.size()[-1] * 100
+                test_acc = self.evaluate(ZV_test, demo_all['test'])
+                print(f'Epoch {epoch + 1}/{num_epochs} acc: {train_acc:.2f}%/{test_acc:.2f}% (train/test)')
+
+    def evaluate(self, ZV, demo):
+        with torch.no_grad():
+            predicted_labels = torch.argmax(self.forward(ZV), dim=1)
+            accuracy = torch.sum(predicted_labels == demo['label']).item() / predicted_labels.size()[-1] * 100
+        return accuracy
