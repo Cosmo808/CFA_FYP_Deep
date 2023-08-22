@@ -1578,7 +1578,7 @@ class rank_VAE(nn.Module):
         self.name = 'rank_VAE'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.beta = 5
-        self.gamma = 10
+        self.gamma = 5
 
         # zs encoder, dim=dimz-1
         self.conv1 = nn.Conv2d(1, 16, 3, stride=2, padding=1)  # 16 x 32 x 32

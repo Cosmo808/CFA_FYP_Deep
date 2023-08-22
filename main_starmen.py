@@ -63,7 +63,7 @@ if __name__ == '__main__':
                                                num_workers=0, drop_last=False, pin_memory=True)
 
     # training
-    autoencoder = model.Riem_VAE()
+    autoencoder = model.beta_VAE()
     autoencoder.device = device
     if hasattr(autoencoder, 'X'):
         X, Y = data_generator.generate_XY(train_data)
