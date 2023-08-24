@@ -500,11 +500,13 @@ class CNAD_classifier(nn.Module):
         self.to(ZV.device)
         criterion = nn.CrossEntropyLoss()
         labels = demo_all['train']['label'].to(ZV.device)
-        labels_test = demo_all['train']['label'].to(ZV.device)
+        labels_test = demo_all['test']['label'].to(ZV.device)
 
-        cnad_idx = torch.nonzero(labels == 0 or labels == 3)
-        ZV, ZV_test = ZV[cnad_idx], ZV_test[cnad_idx]
-        labels, labels_test = labels[cnad_idx] // 3, labels_test[cnad_idx] // 3
+        cnad_idx_train = torch.logical_or(labels == 0, labels == 3)
+        cnad_idx_test = torch.logical_or(labels_test == 0, labels_test == 3)
+        ZV = ZV[cnad_idx_train]
+        ZV_test = ZV_test[cnad_idx_test]
+        labels, labels_test = labels[cnad_idx_train] // 3, labels_test[cnad_idx_test] // 3
 
         for epoch in tqdm(range(num_epochs)):
             optimizer.zero_grad()

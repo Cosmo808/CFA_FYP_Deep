@@ -124,4 +124,4 @@ if __name__ == '__main__':
     optimizer = optimizer_fn(classifier.parameters(), lr=lr)
     params = {'beta': autoencoder.beta, 'sigma0_2': autoencoder.sigma0_2, 'sigma1_2': autoencoder.sigma1_2, 'sigma2_2': autoencoder.sigma2_2}
     demo_all = {'train': demo_train, 'test': demo_test, 'X': X, 'Y': Y, 'params': params}
-    classifier.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer, num_epochs=40)
+    classifier.train_(ZV['train'].to(device).float(), ZV['test'].to(device).float(), demo_all, optimizer=optimizer, num_epochs=100)
