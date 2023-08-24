@@ -4,6 +4,9 @@ from dataset import Dataset_starmen
 from data_preprocess import Data_preprocess_starmen
 import pandas as pd
 import scipy.stats as stats
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib
 from sklearn.cross_decomposition import PLSRegression
 from torch.autograd import Variable
 import numpy as np
@@ -73,7 +76,7 @@ def get_reconstruction(input_, model_name):
     return reconstruction_loss, zu, zv, z
 
 
-def get_pred_loss(image, model_name, missing_num=7):
+def get_pred_loss(image, model_name, missing_num=5):
     autoencoder.eval()
     num_subject = image.size()[0] // 10
     idx0, idx1 = [], []
@@ -108,7 +111,7 @@ def get_pred_loss(image, model_name, missing_num=7):
                 torch.inverse((autoencoder.sigma0_2 + autoencoder.sigma2_2) * yty - 2 * autoencoder.sigma0_2
                               * autoencoder.sigma2_2 * torch.eye(yty.size()[0], device=autoencoder.device)),
                 autoencoder.sigma2_2 * yt_z_xbeta + autoencoder.sigma0_2 * yt_zv
-            )
+            )*0.8
             # get z1
             z1 = torch.matmul(X1, autoencoder.beta) + torch.matmul(Y1, b)
 
@@ -116,7 +119,8 @@ def get_pred_loss(image, model_name, missing_num=7):
             # get z
             z0, _ = autoencoder.encoder(input_0)
             # get alpha
-            alpha = torch.tensor([[a.exp() for a in data[6]]], device=autoencoder.device).float().view(len(idx0) + len(idx1), -1)
+            alpha = torch.tensor([[a.exp() for a in data[6]]], device=autoencoder.device).float().view(
+                len(idx0) + len(idx1), -1)
             alpha0, alpha1 = alpha[idx0], alpha[idx1]
             # get delta age
             delta_age0 = X0[:, 1].clone().detach().to(autoencoder.device).float().view(alpha0.size())
@@ -124,8 +128,10 @@ def get_pred_loss(image, model_name, missing_num=7):
             # calculate fixed
             fixed0 = torch.mul(delta_age0, alpha0) / 50
             fixed1 = torch.mul(delta_age1, alpha1) / 50
-            fixed0 = torch.cat((fixed0, torch.zeros([len(idx0), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
-            fixed1 = torch.cat((fixed1, torch.zeros([len(idx1), z0.size()[1] - 1]).to(autoencoder.device).float()), dim=1)
+            fixed0 = torch.cat((fixed0, torch.zeros([len(idx0), z0.size()[1] - 1]).to(autoencoder.device).float()),
+                               dim=1)
+            fixed1 = torch.cat((fixed1, torch.zeros([len(idx1), z0.size()[1] - 1]).to(autoencoder.device).float()),
+                               dim=1)
             # calculate random
             Y0 = (Y0[:, ::2]).to(autoencoder.device).float()
             Y1 = (Y1[:, ::2]).to(autoencoder.device).float()
@@ -139,27 +145,81 @@ def get_pred_loss(image, model_name, missing_num=7):
             z1 = fixed1 + random
 
         predicted = autoencoder.decoder(z1)
+
+        # plot
+        sub = 10
+        fig, axes = plt.subplots(3, 10, figsize=(20, 2 * 3))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(10):
+            axes[0][i].matshow(255 * image[i + sub * 10][0].cpu().detach().numpy())
+        for i in range(10):
+            if i < (10 - missing_num):
+                axes[1][i].matshow(255 * image[i + sub * 10][0].cpu().detach().numpy())
+            else:
+                axes[1][i].matshow(
+                    255 * predicted[i + sub * missing_num - (10 - missing_num)][0].cpu().detach().numpy())
+                subtraction = image[i + sub * 10][0] - predicted[i + sub * missing_num - (10 - missing_num)][0]
+                axes[2][i].matshow(subtraction.cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+                                   norm=mcolors.Normalize(vmin=-1, vmax=1))
+
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+        plt.savefig('visualization/extrapolation.png', bbox_inches='tight')
+        plt.close()
+        exit()
         return torch.sum((predicted - input_1) ** 2) / input_1.shape[0]
 
     if model_name in vae_pred_class:
         if model_name in vae_disen_recon_class:
             zs_mu, zs_logVar, zpsi_mu, zpsi_logVar, zs_encoded, zpsi_encoded = autoencoder.forward(input_0)
             if missing_num > 5:
-                zs_mu, zs_logVar = expand_vector(zs_mu, missing_num, num_subject), expand_vector(zs_logVar, missing_num, num_subject)
-                zpsi_mu, zpsi_logVar = expand_vector(zpsi_mu, missing_num, num_subject), expand_vector(zpsi_logVar, missing_num, num_subject)
+                zs_mu, zs_logVar = expand_vector(zs_mu, missing_num, num_subject), expand_vector(zs_logVar, missing_num,
+                                                                                                 num_subject)
+                zpsi_mu, zpsi_logVar = expand_vector(zpsi_mu, missing_num, num_subject), expand_vector(zpsi_logVar,
+                                                                                                       missing_num,
+                                                                                                       num_subject)
             zs_encoded = autoencoder.reparametrize(zs_mu, zs_logVar)
             zpsi_encoded = autoencoder.reparametrize(zpsi_mu, zpsi_logVar)
             encoded = torch.cat((zs_encoded, zpsi_encoded), dim=1)
 
         if model_name in vae_no_disen_recon_class:
-            z, logVar, reconstructed = autoencoder.forward(input_0)
+            z, logVar, predicted = autoencoder.forward(input_0)
             if missing_num > 5:
                 z, logVar = expand_vector(z, missing_num, num_subject), expand_vector(logVar, missing_num, num_subject)
             encoded = autoencoder.reparametrize(z, logVar)
 
-        reconstructed = autoencoder.decoder(encoded)
+        predicted = autoencoder.decoder(encoded)
         pred_loss, _ = autoencoder.loss(torch.tensor([0.], device=autoencoder.device),
-                                        torch.tensor([0.], device=autoencoder.device), reconstructed, input_1)
+                                        torch.tensor([0.], device=autoencoder.device), predicted, input_1)
+
+        # plot
+        sub = 4
+        fig, axes = plt.subplots(3, 10, figsize=(20, 2 * 3))
+        plt.subplots_adjust(wspace=0, hspace=0)
+        for i in range(10):
+            axes[0][i].matshow(255 * image[i + sub * 10][0].cpu().detach().numpy())
+        for i in range(10):
+            if i < (10 - missing_num):
+                axes[1][i].matshow(255 * image[i + sub * 10][0].cpu().detach().numpy())
+            else:
+                axes[1][i].matshow(
+                    255 * predicted[i + sub * missing_num - (10 - missing_num)][0].cpu().detach().numpy())
+                subtraction = image[i + sub * 10][0] - predicted[i + sub * missing_num - (10 - missing_num)][0]
+                axes[2][i].matshow(subtraction.cpu().detach().numpy(), cmap=matplotlib.cm.get_cmap('bwr'),
+                                   norm=matplotlib.colors.CenteredNorm())
+
+        for axe in axes:
+            for ax in axe:
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+        plt.savefig('visualization/extrapolation.png', bbox_inches='tight')
+        plt.close()
+        exit()
+
         return pred_loss
 
     return 0.0
@@ -177,9 +237,10 @@ if __name__ == '__main__':
         logger.info(f"##### Fold {fold + 1}/5 #####\n")
 
         # load the model
-        model_name = 'starmen'
-        autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
-        # autoencoder = torch.load('model/{}_fold_{}'.format(fold, model_name), map_location=device)
+        model_name = 'ML_VAE'
+        # autoencoder = torch.load('5-fold/{}/{}_fold_{}'.format(model_name, fold, model_name), map_location=device)
+        autoencoder = torch.load('model/{}_fold_{}'.format(fold, model_name), map_location=device)
+        # autoencoder = torch.load('model/best_starmen', map_location=device)
         autoencoder.device = device
         autoencoder.Training = False
         autoencoder.eval()
