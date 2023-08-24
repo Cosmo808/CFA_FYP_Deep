@@ -488,7 +488,7 @@ class CNAD_classifier(nn.Module):
 
         self.input_dim = input_dim
         self.fc1 = nn.Linear(input_dim, input_dim)
-        self.fc1 = nn.Linear(input_dim, 2)
+        self.fc2 = nn.Linear(input_dim, 2)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
@@ -498,24 +498,29 @@ class CNAD_classifier(nn.Module):
 
     def train_(self, ZV, ZV_test, demo_all, optimizer, num_epochs):
         self.to(ZV.device)
-        demo = demo_all['train']
         criterion = nn.CrossEntropyLoss()
+        labels = demo_all['train']['label'].to(ZV.device)
+        labels_test = demo_all['train']['label'].to(ZV.device)
+
+        cnad_idx = torch.nonzero(labels == 0 or labels == 3)
+        ZV, ZV_test = ZV[cnad_idx], ZV_test[cnad_idx]
+        labels, labels_test = labels[cnad_idx] // 3, labels_test[cnad_idx] // 3
 
         for epoch in tqdm(range(num_epochs)):
             optimizer.zero_grad()
             preds = self.forward(ZV)
-            loss = criterion(preds, demo['label'])
+            loss = criterion(preds.float(), labels.long())
             loss.backward()
             optimizer.step()
 
             if epoch % 5 == 0:
                 predicted_labels = torch.argmax(preds, dim=1)
-                train_acc = torch.sum(predicted_labels == demo['label']).item() / predicted_labels.size()[-1] * 100
-                test_acc = self.evaluate(ZV_test, demo_all['test'])
+                train_acc = torch.sum(predicted_labels == labels).item() / predicted_labels.size()[-1] * 100
+                test_acc = self.evaluate(ZV_test, labels_test)
                 print(f'Epoch {epoch + 1}/{num_epochs} acc: {train_acc:.2f}%/{test_acc:.2f}% (train/test)')
 
-    def evaluate(self, ZV, demo):
+    def evaluate(self, ZV, labels_test):
         with torch.no_grad():
             predicted_labels = torch.argmax(self.forward(ZV), dim=1)
-            accuracy = torch.sum(predicted_labels == demo['label']).item() / predicted_labels.size()[-1] * 100
+            accuracy = torch.sum(predicted_labels == labels_test).item() / predicted_labels.size()[-1] * 100
         return accuracy
